@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['data/cardio_train.csv','train.py','model.py','preprocessing.py','requirements.txt','.github/workflows/train-mlp.yml']
+    paths: ['data/cardio_train.csv','train.py','model.py','preprocessing.py','requirements.txt','tests/**','.github/workflows/train-mlp.yml']
 permissions:
   contents: write
 concurrency:
