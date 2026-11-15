@@ -664,7 +664,7 @@ if submitted:
             <div class="section-head">
                 <div><h2>What influenced this result?</h2>
                 <p>03 / LOCAL MODEL EXPLANATION</p></div>
-                <p>Gradient SHAP · this observation</p>
+                <p>Integrated Gradients · this observation</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -715,7 +715,7 @@ if submitted:
                         <div class="impact-track">
                             <div class="impact-fill" style="width:{width:.1f}%;background:{color}"></div>
                         </div>
-                        <div class="impact-value">SHAP contribution&nbsp; <strong>{value:+.4f}</strong></div>
+                        <div class="impact-value">Attribution&nbsp; <strong>{value:+.4f}</strong></div>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -726,7 +726,7 @@ if submitted:
                 <div class="explain-note">
                     <strong>How to read this:</strong> these are model attributions, not causes of
                     cardiovascular disease. Correlated inputs and engineered features can share
-                    attribution. SHAP explains this model's output; it does not establish causation
+                    attribution. Integrated Gradients explains this model's output; it does not establish causation
                     or clinical importance.
                 </div>
                 """,
