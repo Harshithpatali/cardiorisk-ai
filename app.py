@@ -8,6 +8,7 @@ import torch
 
 from model import CardioMLP
 from preprocessing import make_feature_row, transform_frame
+from explainability import build_background, explain_observation, feature_names
 
 
 ROOT = Path(__file__).resolve().parent
@@ -314,6 +315,110 @@ st.markdown(
         border:1px solid #e5edf4;
         border-radius:14px;
     }
+    .explain-intro {
+        display:flex;
+        align-items:center;
+        gap:1rem;
+        padding:1.15rem 1.25rem;
+        margin:.35rem 0 1rem 0;
+        border:1px solid #dcece9;
+        border-radius:18px;
+        background:linear-gradient(105deg,#effaf8,#fff 75%);
+    }
+    .explain-icon {
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:44px;
+        height:44px;
+        flex:0 0 44px;
+        border-radius:14px;
+        color:#087f75;
+        background:#d8f5ef;
+        font-size:1.35rem;
+    }
+    .explain-title {
+        color:#142b49;
+        font-family:'Manrope',sans-serif;
+        font-size:1.02rem;
+        font-weight:800;
+    }
+    .explain-subtitle {
+        color:#718096;
+        font-size:.79rem;
+        line-height:1.5;
+        margin-top:.2rem;
+    }
+    .impact-card {
+        padding:.9rem 1.05rem;
+        margin:.62rem 0;
+        border:1px solid #e5edf4;
+        border-radius:15px;
+        background:#fff;
+        box-shadow:0 5px 16px rgba(23,49,78,.035);
+    }
+    .impact-top {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:.7rem;
+        margin-bottom:.62rem;
+    }
+    .impact-name {
+        display:flex;
+        align-items:center;
+        gap:.65rem;
+        color:#1b3552;
+        font-size:.9rem;
+        font-weight:800;
+    }
+    .impact-rank {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:26px;
+        height:26px;
+        border-radius:8px;
+        color:#6d8197;
+        background:#f0f4f8;
+        font-size:.68rem;
+        font-weight:800;
+    }
+    .impact-direction {
+        font-size:.72rem;
+        font-weight:800;
+        text-align:right;
+    }
+    .impact-track {
+        width:100%;
+        height:8px;
+        overflow:hidden;
+        border-radius:20px;
+        background:#edf2f6;
+    }
+    .impact-fill {
+        height:100%;
+        border-radius:20px;
+    }
+    .impact-value {
+        color:#8a98a9;
+        font-size:.7rem;
+        margin-top:.48rem;
+    }
+    .impact-value strong {
+        color:#42566d;
+        font-variant-numeric:tabular-nums;
+    }
+    .explain-note {
+        padding:1rem 1.1rem;
+        margin-top:1rem;
+        border-radius:14px;
+        color:#64758a;
+        background:#f0f4f8;
+        font-size:.78rem;
+        line-height:1.6;
+    }
+    .explain-note strong {color:#30465e;}
     @media(max-width:700px) {
         .hero {padding:1.7rem 1.4rem;}
         .hero:after {right:-180px;}
@@ -553,6 +658,83 @@ if submitted:
             "This score is uncalibrated and is not a disease probability. "
             "A negative class prediction cannot rule out disease or replace medical advice."
         )
+
+        st.markdown(
+            """
+            <div class="section-head">
+                <div><h2>What influenced this result?</h2>
+                <p>03 / LOCAL MODEL EXPLANATION</p></div>
+                <p>Gradient SHAP · this observation</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            with st.spinner("Calculating feature contributions..."):
+                background = load_explanation_background("cardio-background-v1")
+                contributions = explain_observation(model, background, transformed)
+                labels = feature_names(config)
+
+            if len(contributions) != len(labels):
+                raise ValueError("SHAP values do not match the saved feature schema.")
+
+            ranked = sorted(
+                zip(labels, contributions),
+                key=lambda item: abs(float(item[1])),
+                reverse=True,
+            )[:8]
+            max_impact = max((abs(float(value)) for _, value in ranked), default=0.0)
+
+            st.markdown(
+                """
+                <div class="explain-intro">
+                    <div class="explain-icon">✦</div>
+                    <div>
+                        <div class="explain-title">The strongest signals behind this model output</div>
+                        <div class="explain-subtitle">Features are ranked by their contribution magnitude.
+                        Coral pushes the model score upward; teal pushes it downward.</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            for rank, (label, value) in enumerate(ranked, start=1):
+                value = float(value)
+                direction = "Raises model output" if value > 0 else "Lowers model output"
+                color = "#f07868" if value > 0 else "#0c9b91"
+                width = 0.0 if max_impact == 0 else abs(value) / max_impact * 100.0
+                st.markdown(
+                    f"""
+                    <div class="impact-card">
+                        <div class="impact-top">
+                            <div class="impact-name"><span class="impact-rank">{rank:02d}</span>{label}</div>
+                            <div class="impact-direction" style="color:{color}">{direction}</div>
+                        </div>
+                        <div class="impact-track">
+                            <div class="impact-fill" style="width:{width:.1f}%;background:{color}"></div>
+                        </div>
+                        <div class="impact-value">SHAP contribution&nbsp; <strong>{value:+.4f}</strong></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown(
+                """
+                <div class="explain-note">
+                    <strong>How to read this:</strong> these are model attributions, not causes of
+                    cardiovascular disease. Correlated inputs and engineered features can share
+                    attribution. SHAP explains this model's output; it does not establish causation
+                    or clinical importance.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        except Exception as exc:
+            st.warning("The prediction is available, but its feature explanation could not be generated.")
+            st.caption(str(exc))
 
 
 with st.expander("How this model was evaluated"):
