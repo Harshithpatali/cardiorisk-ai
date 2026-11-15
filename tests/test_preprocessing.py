@@ -4,7 +4,7 @@ import numpy as np
 from preprocessing import clean_dataset,make_feature_row,transform_frame
 ROOT=Path(__file__).resolve().parents[1]
 def test_cleaning_and_target_shape():
-    data=clean_dataset(ROOT/"cardio_train.csv")
+    data=clean_dataset(ROOT/"data"/"cardio_train.csv")
     assert len(data)>60000 and set(data.cardio.unique())=={0,1}
 def test_input_transform_matches_model_dimension():
     cfg=json.loads((ROOT/"artifacts/preprocessing.json").read_text())
