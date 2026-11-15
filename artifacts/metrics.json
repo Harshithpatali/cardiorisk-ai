@@ -1,0 +1,145 @@
+{
+  "model": "PyTorch MLP (128-64-32)",
+  "default_operating_point": "high_recall",
+  "threshold": 0.24003459513187408,
+  "threshold_selection": "Maximum validation recall subject to validation precision >= 0.55",
+  "validation": {
+    "recall": 0.9683171234895372,
+    "precision": 0.5500125554532519,
+    "f1": 0.7015427320770832,
+    "roc_auc": 0.8018691291679798,
+    "pr_auc": 0.7805813436074024,
+    "accuracy": 0.5923738699329251,
+    "specificity": 0.22424242424242424,
+    "threshold": 0.24003459513187408,
+    "confusion_matrix": [
+      [
+        1554,
+        5376
+      ],
+      [
+        215,
+        6571
+      ]
+    ]
+  },
+  "test": {
+    "recall": 0.9694960212201591,
+    "precision": 0.5510511768154787,
+    "f1": 0.7026969292389853,
+    "roc_auc": 0.8016014424060401,
+    "pr_auc": 0.7783892546407907,
+    "accuracy": 0.5941236512102653,
+    "specificity": 0.22655122655122656,
+    "threshold": 0.24003459513187408,
+    "confusion_matrix": [
+      [
+        1570,
+        5360
+      ],
+      [
+        207,
+        6579
+      ]
+    ]
+  },
+  "operating_points": {
+    "high_recall": {
+      "threshold": 0.24003459513187408,
+      "selection": "Maximum validation recall subject to validation precision >= 0.55",
+      "validation": {
+        "recall": 0.9683171234895372,
+        "precision": 0.5500125554532519,
+        "f1": 0.7015427320770832,
+        "roc_auc": 0.8018691291679798,
+        "pr_auc": 0.7805813436074024,
+        "accuracy": 0.5923738699329251,
+        "specificity": 0.22424242424242424,
+        "threshold": 0.24003459513187408,
+        "confusion_matrix": [
+          [
+            1554,
+            5376
+          ],
+          [
+            215,
+            6571
+          ]
+        ]
+      },
+      "test": {
+        "recall": 0.9694960212201591,
+        "precision": 0.5510511768154787,
+        "f1": 0.7026969292389853,
+        "roc_auc": 0.8016014424060401,
+        "pr_auc": 0.7783892546407907,
+        "accuracy": 0.5941236512102653,
+        "specificity": 0.22655122655122656,
+        "threshold": 0.24003459513187408,
+        "confusion_matrix": [
+          [
+            1570,
+            5360
+          ],
+          [
+            207,
+            6579
+          ]
+        ]
+      }
+    },
+    "balanced": {
+      "threshold": 0.39567631483078003,
+      "selection": "Maximum validation F1",
+      "validation": {
+        "recall": 0.8445328617742411,
+        "precision": 0.6606340057636888,
+        "f1": 0.7413492012159627,
+        "roc_auc": 0.8018691291679798,
+        "pr_auc": 0.7805813436074024,
+        "accuracy": 0.7084426946631671,
+        "specificity": 0.5751803751803751,
+        "threshold": 0.39567631483078003,
+        "confusion_matrix": [
+          [
+            3986,
+            2944
+          ],
+          [
+            1055,
+            5731
+          ]
+        ]
+      },
+      "test": {
+        "recall": 0.8393751842027705,
+        "precision": 0.6582688085057206,
+        "f1": 0.7378716238098323,
+        "roc_auc": 0.8016014424060401,
+        "pr_auc": 0.7783892546407907,
+        "accuracy": 0.7049431321084865,
+        "specificity": 0.5733044733044733,
+        "threshold": 0.39567631483078003,
+        "confusion_matrix": [
+          [
+            3973,
+            2957
+          ],
+          [
+            1090,
+            5696
+          ]
+        ]
+      }
+    }
+  },
+  "rows_after_cleaning": 68579,
+  "split_sizes": {
+    "train": 41147,
+    "validation": 13716,
+    "test": 13716
+  },
+  "epochs_run": 15,
+  "best_validation_loss": 0.6226245057447272,
+  "warning": "Research/educational dataset metrics only; not clinical validation or individual medical risk."
+}

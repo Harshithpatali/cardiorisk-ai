@@ -1,0 +1,75 @@
+{
+  "numeric_columns": [
+    "age_years",
+    "height",
+    "weight",
+    "ap_hi",
+    "ap_lo",
+    "bmi",
+    "pulse_pressure",
+    "map"
+  ],
+  "categorical_columns": [
+    "gender",
+    "cholesterol",
+    "gluc"
+  ],
+  "binary_columns": [
+    "smoke",
+    "alco",
+    "active"
+  ],
+  "feature_columns": [
+    "age_years",
+    "height",
+    "weight",
+    "ap_hi",
+    "ap_lo",
+    "bmi",
+    "pulse_pressure",
+    "map",
+    "gender",
+    "cholesterol",
+    "gluc",
+    "smoke",
+    "alco",
+    "active"
+  ],
+  "scaler_mean": [
+    53.275813546552605,
+    164.44139305417164,
+    74.0821690524218,
+    126.65832259946048,
+    81.30685104624881,
+    27.43655420052834,
+    45.35147155321165,
+    96.4240082306527
+  ],
+  "scaler_scale": [
+    6.755559453755334,
+    7.890721145074415,
+    14.13691570995123,
+    16.697265696419922,
+    9.49045681060254,
+    5.187506855031277,
+    11.620246826186227,
+    11.089276078220873
+  ],
+  "categories": [
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "input_dim": 19
+}
