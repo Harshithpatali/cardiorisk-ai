@@ -1,9 +1,8 @@
-"""SHAP-based local explanations for the CardioRisk AI research model."""
+"""Integrated Gradients explanations for the CardioRisk AI research model."""
 
 from pathlib import Path
 
 import numpy as np
-import shap
 import torch
 
 from preprocessing import clean_dataset, transform_frame
@@ -25,7 +24,7 @@ FEATURE_LABELS = {
 
 
 def build_background(dataset_path: Path, config: dict, sample_size: int = 64):
-    """Create a small, reproducible background sample using saved preprocessing."""
+    """Create a small, reproducible reference sample using saved preprocessing."""
     cleaned = clean_dataset(dataset_path)
     feature_frame = cleaned.drop(columns=["cardio"])
     sample = feature_frame.sample(
@@ -67,19 +66,27 @@ def feature_names(config: dict):
     return names
 
 
-def explain_observation(model, background: torch.Tensor, transformed: np.ndarray):
-    """Calculate Gradient SHAP values for one observation on the model logit."""
-    explainer = shap.GradientExplainer(model, background)
+def explain_observation(
+    model,
+    background: torch.Tensor,
+    transformed: np.ndarray,
+    steps: int = 48,
+):
+    """Estimate Integrated Gradients for one observation on the model logit."""
+    model.eval()
     observation = torch.tensor(transformed, dtype=torch.float32)
-    values = explainer.shap_values(observation)
+    baseline = background.mean(dim=0, keepdim=True)
+    difference = observation - baseline
+    accumulated_gradients = torch.zeros_like(observation)
 
-    if isinstance(values, list):
-        values = values[0]
+    for step in range(1, steps + 1):
+        alpha = step / steps
+        interpolated = (baseline + alpha * difference).detach()
+        interpolated.requires_grad_(True)
+        output = model(interpolated).sum()
+        gradients = torch.autograd.grad(output, interpolated)[0]
+        accumulated_gradients += gradients.detach()
 
-    values = np.asarray(values)
-    values = np.squeeze(values)
-
-    if values.ndim != 1:
-        raise ValueError(f"Unexpected SHAP output shape: {values.shape}")
-
-    return values
+    average_gradients = accumulated_gradients / steps
+    attributions = difference * average_gradients
+    return attributions.detach().cpu().numpy().reshape(-1)
