@@ -445,6 +445,12 @@ def load_assets():
     return config, report, model
 
 
+@st.cache_resource
+def load_explanation_background(config_signature):
+    config, _, _ = load_assets()
+    return build_background(ROOT / "data" / "cardio_train.csv", config)
+
+
 try:
     config, report, model = load_assets()
 except Exception as exc:
