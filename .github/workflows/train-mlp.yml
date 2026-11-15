@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['train.py','model.py','preprocessing.py','requirements.txt','.github/workflows/train-mlp.yml']
+    paths: ['data/cardio_train.csv','train.py','model.py','preprocessing.py','requirements.txt','.github/workflows/train-mlp.yml']
 permissions:
   contents: write
 concurrency:
@@ -23,16 +23,17 @@ jobs:
           cache-dependency-path: requirements.txt
       - name: Install dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Download and validate source dataset
+      - name: Validate uploaded original dataset
         run: |
-          curl --fail --location --retry 3 https://raw.githubusercontent.com/Yorko/mlcourse.ai/main/data/mlbootcamp5_train.csv --output cardio_train.csv
+          test -f data/cardio_train.csv || (echo 'Upload your original dataset to data/cardio_train.csv first.' && exit 1)
           python - <<'PY'
           import pandas as pd
-          df=pd.read_csv('cardio_train.csv',sep=';')
+          df=pd.read_csv('data/cardio_train.csv',sep=';')
           required={'id','age','gender','height','weight','ap_hi','ap_lo','cholesterol','gluc','smoke','alco','active','cardio'}
           missing=required.difference(df.columns)
-          if missing or len(df)<60000: raise SystemExit(f'Dataset validation failed: rows={len(df)}, missing={sorted(missing)}')
-          print(f'Validated {len(df):,} rows')
+          if missing or len(df)<1000: raise SystemExit(f'Dataset validation failed: rows={len(df)}, missing={sorted(missing)}')
+          if not set(df['cardio'].dropna().unique()).issubset({0,1}): raise SystemExit('Target cardio must contain only 0/1')
+          print(f'Validated {len(df):,} rows and {len(df.columns)} columns')
           PY
       - name: Train MLP and create artifacts
         run: python train.py
