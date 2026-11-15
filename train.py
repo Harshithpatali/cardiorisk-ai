@@ -8,7 +8,7 @@ from sklearn.metrics import precision_recall_curve, recall_score, precision_scor
 from torch.utils.data import DataLoader, TensorDataset
 from model import CardioMLP
 from preprocessing import clean_dataset, NUMERIC_COLUMNS, CATEGORICAL_COLUMNS, BINARY_COLUMNS, FEATURE_COLUMNS
-ROOT=Path(__file__).resolve().parent; DATA=ROOT/"cardio_train.csv"; OUT=ROOT/"artifacts"; SEED=42
+ROOT=Path(__file__).resolve().parent; DATA=ROOT/"data"/"cardio_train.csv"; OUT=ROOT/"artifacts"; SEED=42
 def seed_all():
     random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
 def predict(model,x):
