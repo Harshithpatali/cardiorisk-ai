@@ -10,7 +10,10 @@ FEATURE_COLUMNS = NUMERIC_COLUMNS + CATEGORICAL_COLUMNS + BINARY_COLUMNS
 
 def clean_dataset(path):
     """Apply row-wise validity rules and deterministic feature engineering only."""
-    df = pd.read_csv(path, sep=";")
+    if isinstance(path, pd.DataFrame):
+        df = path.copy()
+    else:
+        df = pd.read_csv(path, sep=";")
     required = {
         "id", "age", "gender", "height", "weight", "ap_hi", "ap_lo",
         "cholesterol", "gluc", "smoke", "alco", "active", "cardio",
