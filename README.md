@@ -48,6 +48,18 @@ The GitHub Actions workflow saves these files to `artifacts/`:
 - `metrics.json`
 - `training_history.csv`
 
+## Deploy on Streamlit Community Cloud
+
+The repository is prepared for Streamlit Community Cloud:
+
+1. Open https://share.streamlit.io/ and sign in with GitHub.
+2. Select **New app**.
+3. Choose repository `Harshithpatali/cardiorisk-ai`, branch `main`, and main file path `app.py`.
+4. Choose a supported Python version (Python 3.11 is a good starting point).
+5. Select **Deploy**. The app loads the committed model and preprocessing artifacts from `artifacts/`; no secrets are required.
+
+Do not remove the committed files in `artifacts/`. If the app fails to build, open **Manage app → Logs** and use the first dependency or import error to diagnose it.
+
 ## Run locally
 
 ```bash
