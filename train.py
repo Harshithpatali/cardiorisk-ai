@@ -322,6 +322,14 @@ def main():
             "oof_rows": int(len(oof_probabilities)),
         },
         "test": test_metrics,
+        "operating_points": {
+            "high_recall": {
+                "threshold": float(threshold),
+                "selection": threshold_info,
+                "oof": oof_metrics,
+                "test": test_metrics,
+            }
+        },
         "rows_after_cleaning": int(len(data)),
         "split_sizes": {
             "train": int(len(x_train)), "test": int(len(x_test)),
