@@ -1,4 +1,4 @@
-"""Modern Streamlit interface for the cardiovascular dataset MLP research demo."""
+"""Premium Streamlit interface for the cardiovascular dataset MLP research demo."""
 
 import json
 from pathlib import Path
@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent
 ARTIFACTS = ROOT / "artifacts"
 
 st.set_page_config(
-    page_title="CardioRisk AI",
+    page_title="CardioRisk AI | Research Studio",
     page_icon="🫀",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -23,81 +23,301 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --ink: #10233f;
+        --muted: #718096;
+        --teal: #12b8a6;
+        --coral: #ff806e;
+        --line: #e5edf4;
+    }
+    html, body, [class*="css"] {
+        font-family: 'DM Sans', sans-serif;
+    }
+    .stApp {
+        background:
+            radial-gradient(circle at 4% 0%, rgba(18,184,166,.10), transparent 26rem),
+            radial-gradient(circle at 96% 8%, rgba(255,128,110,.10), transparent 25rem),
+            #f4f7fb;
+        color: var(--ink);
+    }
     #MainMenu, footer, header {visibility: hidden;}
     [data-testid="stSidebar"] {display: none;}
     .block-container {
-        max-width: 1180px;
-        padding-top: 2.2rem;
-        padding-bottom: 3rem;
+        max-width: 1240px;
+        padding-top: 1.4rem;
+        padding-bottom: 3.5rem;
+    }
+    .topline {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom:1.15rem;
+        color:#66758a;
+        font-size:.82rem;
+        font-weight:700;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+    }
+    .brandmark {
+        display:flex;
+        align-items:center;
+        gap:.6rem;
+        color:#142b49;
+        letter-spacing:.02em;
+    }
+    .brandicon {
+        display:inline-flex;
+        width:34px;
+        height:34px;
+        align-items:center;
+        justify-content:center;
+        border-radius:11px;
+        color:white;
+        background:linear-gradient(135deg,#12b8a6,#087f86);
+        font-size:1.1rem;
+    }
+    .livepill {
+        border:1px solid #bdebe4;
+        background:#e8faf6;
+        color:#087f75;
+        border-radius:30px;
+        padding:.38rem .75rem;
+        letter-spacing:.02em;
+        text-transform:none;
+        font-size:.76rem;
     }
     .hero {
-        padding: 2rem 2.1rem;
-        border-radius: 22px;
-        background: linear-gradient(120deg, #111827 0%, #26364d 62%, #7f1d1d 100%);
-        color: #ffffff;
-        margin-bottom: 1.5rem;
+        position:relative;
+        overflow:hidden;
+        padding:2.45rem 2.6rem;
+        border-radius:27px;
+        background:linear-gradient(112deg,#10233f 0%,#173b56 58%,#087f86 100%);
+        color:#fff;
+        box-shadow:0 18px 45px rgba(16,35,63,.16);
+        margin-bottom:1.4rem;
+    }
+    .hero:after {
+        content:'';
+        position:absolute;
+        width:310px;
+        height:310px;
+        border:1px solid rgba(255,255,255,.14);
+        border-radius:50%;
+        right:7%;
+        top:-155px;
+        box-shadow:0 0 0 28px rgba(255,255,255,.035),0 0 0 58px rgba(255,255,255,.025);
+    }
+    .hero-kicker {
+        color:#8de9dc;
+        font-size:.75rem;
+        font-weight:800;
+        letter-spacing:.16em;
+        text-transform:uppercase;
     }
     .hero h1 {
-        color: #ffffff;
-        font-size: clamp(2rem, 4vw, 3rem);
-        font-weight: 750;
-        letter-spacing: -0.04em;
-        margin: 0.2rem 0 0.6rem 0;
+        color:#fff;
+        font-family:'Manrope',sans-serif;
+        font-size:clamp(2.4rem,5vw,3.65rem);
+        line-height:1.08;
+        font-weight:800;
+        letter-spacing:-.055em;
+        margin:.75rem 0 .8rem 0;
     }
     .hero p {
-        color: #e5e7eb;
-        font-size: 1rem;
-        margin: 0;
+        color:#d7e6ee;
+        max-width:650px;
+        font-size:1.02rem;
+        line-height:1.65;
+        margin:0;
     }
-    .eyebrow {
-        color: #fecaca;
-        text-transform: uppercase;
-        font-size: 0.76rem;
-        font-weight: 700;
-        letter-spacing: 0.13em;
+    .hero-foot {
+        display:flex;
+        flex-wrap:wrap;
+        gap:.55rem;
+        margin-top:1.45rem;
     }
-    .section-label {
-        font-size: 1.12rem;
-        font-weight: 700;
-        margin: 0.3rem 0 0.2rem 0;
+    .hero-tag {
+        border:1px solid rgba(255,255,255,.22);
+        border-radius:30px;
+        padding:.38rem .75rem;
+        color:#effafa;
+        font-size:.78rem;
+        background:rgba(255,255,255,.08);
     }
-    .muted {
-        color: #64748b;
-        font-size: 0.9rem;
+    .section-head {
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        gap:1rem;
+        margin:1.9rem 0 .9rem 0;
     }
-    .result-card {
-        padding: 1.4rem 1.5rem;
-        border: 1px solid rgba(148, 163, 184, 0.28);
-        border-radius: 18px;
-        background: rgba(148, 163, 184, 0.07);
+    .section-head h2 {
+        color:#142b49;
+        font-family:'Manrope',sans-serif;
+        font-size:1.35rem;
+        font-weight:800;
+        letter-spacing:-.035em;
+        margin:0;
     }
-    .result-title {
-        font-size: 0.82rem;
-        color: #64748b;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+    .section-head p {
+        color:#8492a6;
+        font-size:.83rem;
+        margin:0;
     }
-    .result-value {
-        font-size: 2rem;
-        font-weight: 800;
-        margin: 0.25rem 0;
+    .metric-card {
+        background:rgba(255,255,255,.9);
+        border:1px solid #e6edf4;
+        border-radius:18px;
+        padding:1.05rem 1.15rem;
+        min-height:116px;
+        box-shadow:0 8px 24px rgba(23,49,78,.045);
     }
-    div[data-testid="stMetric"] {
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        border-radius: 15px;
-        padding: 0.9rem 1rem;
-        background: rgba(148, 163, 184, 0.06);
+    .metric-top {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        color:#718096;
+        font-size:.78rem;
+        font-weight:700;
     }
-    div.stButton > button, div[data-testid="stFormSubmitButton"] button {
-        border-radius: 12px;
-        min-height: 3rem;
-        font-weight: 700;
+    .metric-dot {
+        width:8px;
+        height:8px;
+        border-radius:50%;
+        display:inline-block;
+        background:#12b8a6;
+        box-shadow:0 0 0 4px #e2f8f4;
+    }
+    .metric-number {
+        font-family:'Manrope',sans-serif;
+        color:#142b49;
+        font-size:1.9rem;
+        line-height:1.25;
+        font-weight:800;
+        margin-top:.55rem;
+        letter-spacing:-.04em;
+    }
+    .metric-foot {
+        color:#9aa7b7;
+        font-size:.72rem;
+        margin-top:.1rem;
+    }
+    .notice {
+        border:1px solid #f5d9b8;
+        background:#fff8ed;
+        color:#855b2e;
+        border-radius:13px;
+        padding:.85rem 1rem;
+        font-size:.82rem;
+        line-height:1.55;
+        margin:1rem 0;
+    }
+    .form-shell {
+        background:#fff;
+        border:1px solid #e5edf4;
+        border-radius:22px;
+        padding:1.3rem 1.4rem;
+        box-shadow:0 12px 35px rgba(23,49,78,.055);
+    }
+    .input-section {
+        color:#173b56;
+        font-family:'Manrope',sans-serif;
+        font-weight:800;
+        font-size:.98rem;
+        padding:.15rem 0 .55rem 0;
+        border-bottom:1px solid #edf1f5;
+        margin-bottom:.7rem;
+    }
+    .input-hint {
+        color:#94a3b8;
+        font-size:.76rem;
+        margin-top:-.35rem;
+        margin-bottom:.75rem;
+    }
+    div[data-testid="stNumberInput"] input,
+    div[data-testid="stSelectbox"] div[role="combobox"] {
+        border-radius:11px;
+    }
+    div[data-testid="stSlider"] {
+        padding-top:.2rem;
     }
     div[data-testid="stForm"] {
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        border-radius: 18px;
-        padding: 1.2rem 1.3rem;
+        background:transparent;
+        border:0;
+        padding:0;
+    }
+    div[data-testid="stFormSubmitButton"] button {
+        border:0;
+        border-radius:13px;
+        min-height:3.25rem;
+        color:white;
+        background:linear-gradient(100deg,#0c938e,#12b8a6);
+        font-size:.98rem;
+        font-weight:800;
+        box-shadow:0 8px 20px rgba(18,184,166,.22);
+        transition:transform .18s ease,box-shadow .18s ease;
+    }
+    div[data-testid="stFormSubmitButton"] button:hover {
+        transform:translateY(-2px);
+        box-shadow:0 12px 24px rgba(18,184,166,.28);
+        color:white;
+    }
+    .result-panel {
+        border-radius:21px;
+        padding:1.5rem;
+        background:#fff;
+        border:1px solid #e5edf4;
+        box-shadow:0 12px 35px rgba(23,49,78,.06);
+    }
+    .result-positive {
+        border-left:5px solid #ff806e;
+        background:linear-gradient(110deg,#fff4f1,#fff);
+    }
+    .result-negative {
+        border-left:5px solid #12b8a6;
+        background:linear-gradient(110deg,#edfbf8,#fff);
+    }
+    .result-label {
+        color:#718096;
+        font-size:.75rem;
+        font-weight:800;
+        text-transform:uppercase;
+        letter-spacing:.12em;
+    }
+    .result-heading {
+        color:#142b49;
+        font-family:'Manrope',sans-serif;
+        font-size:1.65rem;
+        font-weight:800;
+        letter-spacing:-.04em;
+        margin:.45rem 0;
+    }
+    .result-copy {
+        color:#718096;
+        font-size:.88rem;
+        line-height:1.55;
+    }
+    .score-number {
+        color:#142b49;
+        font-family:'Manrope',sans-serif;
+        font-size:2.35rem;
+        font-weight:800;
+        letter-spacing:-.05em;
+    }
+    .stProgress > div > div > div > div {
+        background:linear-gradient(90deg,#12b8a6,#ff806e);
+    }
+    [data-testid="stExpander"] {
+        background:#fff;
+        border:1px solid #e5edf4;
+        border-radius:14px;
+    }
+    @media(max-width:700px) {
+        .hero {padding:1.7rem 1.4rem;}
+        .hero:after {right:-180px;}
+        .block-container {padding-top:1rem;}
     }
     </style>
     """,
@@ -138,80 +358,121 @@ threshold = float(operating_point["threshold"])
 
 st.markdown(
     """
+    <div class="topline">
+        <div class="brandmark"><span class="brandicon">✚</span> CARDIORISK AI</div>
+        <div class="livepill">● &nbsp; Research environment</div>
+    </div>
     <div class="hero">
-        <div class="eyebrow">Machine learning research application</div>
-        <h1>CardioRisk AI</h1>
-        <p>Explore a cardiovascular dataset classification result using a PyTorch neural network.</p>
+        <div class="hero-kicker">Intelligent health data · Research studio</div>
+        <h1>Understand the<br>signals in your data.</h1>
+        <p>A neural-network research interface for exploring cardiovascular dataset patterns.
+        Enter an observation, run the model, and inspect its output in seconds.</p>
+        <div class="hero-foot">
+            <span class="hero-tag">PyTorch MLP · 128 / 64 / 32</span>
+            <span class="hero-tag">5-fold cross-validation</span>
+            <span class="hero-tag">Leakage-aware evaluation</span>
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-st.warning(
-    "Research and educational demonstration only. This model is not clinically validated "
-    "and must not be used for diagnosis, treatment, screening, or healthcare decisions."
+st.markdown(
+    """
+    <div class="notice">
+        <strong>Research use only.</strong> This application is not clinically validated and
+        must not be used for diagnosis, treatment, screening, or healthcare decisions.
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-st.markdown('<div class="section-label">Model performance</div>', unsafe_allow_html=True)
-st.caption(
-    "Held-out test metrics for the selected high-recall operating point. "
-    "These are dataset evaluation metrics, not individual-level clinical confidence."
+st.markdown(
+    """
+    <div class="section-head">
+        <div><h2>Model snapshot</h2><p>Held-out test-set performance</p></div>
+        <p>High-recall operating point</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+
+metric_values = [
+    ("Recall", f'{metrics["recall"]:.1%}', "Sensitivity on test data"),
+    ("Precision", f'{metrics["precision"]:.1%}', "Positive prediction quality"),
+    ("ROC-AUC", f'{metrics["roc_auc"]:.3f}', "Ranking discrimination"),
+    ("PR-AUC", f'{metrics["pr_auc"]:.3f}', "Precision-recall performance"),
+]
 
 metric_columns = st.columns(4)
-metric_columns[0].metric("Recall", f'{metrics["recall"]:.1%}')
-metric_columns[1].metric("Precision", f'{metrics["precision"]:.1%}')
-metric_columns[2].metric("ROC-AUC", f'{metrics["roc_auc"]:.3f}')
-metric_columns[3].metric("PR-AUC", f'{metrics["pr_auc"]:.3f}')
 
-st.divider()
-st.markdown('<div class="section-label">Analyse an observation</div>', unsafe_allow_html=True)
+for column, (label, value, foot) in zip(metric_columns, metric_values):
+    column.markdown(
+        f"""
+        <div class="metric-card">
+            <div class="metric-top">{label}<span class="metric-dot"></span></div>
+            <div class="metric-number">{value}</div>
+            <div class="metric-foot">{foot}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 st.markdown(
-    '<p class="muted">Enter values in the same format as the source dataset. '
-    'All inputs are processed locally in this app session.</p>',
+    """
+    <div class="section-head">
+        <div><h2>Explore an observation</h2><p>Provide dataset-style attributes below</p></div>
+        <p>01 / INPUT</p>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
 with st.form("cardio_observation_form"):
-    demographic_column, body_column, clinical_column = st.columns(3)
+    first_column, second_column, third_column = st.columns(3)
 
-    with demographic_column:
-        st.markdown("**Demographics**")
-        age = st.slider("Age (years)", 30, 80, 55)
+    with first_column:
+        st.markdown('<div class="input-section">01 &nbsp; Demographics</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Basic profile information</div>', unsafe_allow_html=True)
+        age = st.slider("Age · years", 30, 80, 55)
         gender = st.selectbox("Gender", ["Female", "Male"])
 
-    with body_column:
-        st.markdown("**Body measurements**")
-        height = st.number_input("Height (cm)", 120, 220, 165)
-        weight = st.number_input("Weight (kg)", 35.0, 200.0, 75.0, 0.5)
+    with second_column:
+        st.markdown('<div class="input-section">02 &nbsp; Body profile</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Height and weight measurements</div>', unsafe_allow_html=True)
+        height = st.number_input("Height · cm", 120, 220, 165)
+        weight = st.number_input("Weight · kg", 35.0, 200.0, 75.0, 0.5)
 
-    with clinical_column:
-        st.markdown("**Blood pressure**")
-        systolic = st.number_input("Systolic pressure", 70, 250, 120)
-        diastolic = st.number_input("Diastolic pressure", 40, 180, 80)
+    with third_column:
+        st.markdown('<div class="input-section">03 &nbsp; Blood pressure</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Systolic and diastolic readings</div>', unsafe_allow_html=True)
+        systolic = st.number_input("Systolic · mmHg", 70, 250, 120)
+        diastolic = st.number_input("Diastolic · mmHg", 40, 180, 80)
 
-    st.divider()
-    lifestyle_column, habit_column = st.columns(2)
+    st.markdown("---")
+    lifestyle_column, habits_column = st.columns(2)
 
     with lifestyle_column:
-        st.markdown("**Cholesterol and glucose**")
+        st.markdown('<div class="input-section">04 &nbsp; Clinical indicators</div>', unsafe_allow_html=True)
         cholesterol = st.selectbox(
-            "Cholesterol",
+            "Cholesterol level",
             ["Normal", "Above normal", "Well above normal"],
         )
         glucose = st.selectbox(
-            "Glucose",
+            "Glucose level",
             ["Normal", "Above normal", "Well above normal"],
         )
 
-    with habit_column:
-        st.markdown("**Lifestyle**")
+    with habits_column:
+        st.markdown('<div class="input-section">05 &nbsp; Lifestyle</div>', unsafe_allow_html=True)
         smoking = st.selectbox("Smoking", ["No", "Yes"])
         alcohol = st.selectbox("Alcohol intake", ["No", "Yes"])
         active = st.selectbox("Physical activity", ["Yes", "No"])
 
+    st.markdown("")
     submitted = st.form_submit_button(
-        "Analyse observation",
+        "✦  Run cardiovascular data analysis",
         type="primary",
         use_container_width=True,
     )
@@ -241,35 +502,60 @@ if submitted:
             score = float(torch.sigmoid(model(tensor)).item())
 
         predicted_positive = score >= threshold
-        st.divider()
-        st.markdown('<div class="section-label">Analysis result</div>', unsafe_allow_html=True)
 
-        result_column, score_column = st.columns([1.15, 0.85])
+        st.markdown(
+            """
+            <div class="section-head">
+                <div><h2>Analysis output</h2><p>02 / MODEL RESULT</p></div>
+                <p>Threshold locked from OOF validation</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        result_column, score_column = st.columns([1.2, 0.8])
 
         with result_column:
-            if predicted_positive:
-                st.error("Dataset class prediction: Positive (class 1)")
-            else:
-                st.success("Dataset class prediction: Negative (class 0)")
-
+            result_class = "result-positive" if predicted_positive else "result-negative"
+            result_text = "Positive class" if predicted_positive else "Negative class"
+            result_detail = (
+                "The model output is above the selected classification threshold."
+                if predicted_positive
+                else "The model output is below the selected classification threshold."
+            )
+            result_icon = "↗" if predicted_positive else "✓"
             st.markdown(
-                '<p class="muted">This is the model output for the supplied dataset-style '
-                'inputs. It is not a medical assessment.</p>',
+                f"""
+                <div class="result-panel {result_class}">
+                    <div class="result-label">Dataset classification</div>
+                    <div class="result-heading">{result_icon} &nbsp; {result_text}</div>
+                    <div class="result-copy">{result_detail}</div>
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
 
         with score_column:
-            st.metric("Uncalibrated model score", f"{score:.1%}")
+            st.markdown(
+                f"""
+                <div class="result-panel">
+                    <div class="result-label">Uncalibrated model score</div>
+                    <div class="score-number">{score:.1%}</div>
+                    <div class="result-copy">Model output score · not a clinical probability</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             st.progress(min(max(score, 0.0), 1.0))
-            st.caption(f"Fixed validation-selected threshold: {threshold:.4f}")
+            st.caption(f"Selected threshold: {threshold:.4f}")
 
         st.info(
-            "The score is uncalibrated and is not a disease probability. "
+            "This score is uncalibrated and is not a disease probability. "
             "A negative class prediction cannot rule out disease or replace medical advice."
         )
 
 
-with st.expander("Evaluation design and limitations"):
+with st.expander("How this model was evaluated"):
     st.write(
         "The model is a PyTorch MLP with 128, 64, and 32 hidden units. "
         "The threshold was selected using out-of-fold training predictions, "
@@ -285,4 +571,13 @@ with st.expander("Evaluation design and limitations"):
         "or clinical validation."
     )
 
-st.caption("CardioRisk AI · PyTorch MLP · Educational research use only")
+st.markdown(
+    """
+    <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e2eaf1;
+    color:#94a3b8;font-size:.75rem;display:flex;justify-content:space-between;flex-wrap:wrap;">
+        <span>CardioRisk AI · Research Studio</span>
+        <span>Built with PyTorch & Streamlit · Educational use only</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
