@@ -1,49 +1,65 @@
-# CardioRisk AI — Cross-fitted high-recall PyTorch MLP
+# CardioRisk AI — Modular cross-fitted PyTorch MLP
 
-A Streamlit research demonstration powered by **one model only: a PyTorch MLP (128–64–32)**. LightGBM is not part of this project.
+A Streamlit research application powered by one model: a PyTorch MLP (128–64–32). LightGBM is not included.
 
-> **Safety:** Educational/research software only. It is not clinically validated and must not be used for diagnosis, treatment, screening, or care decisions. The dataset label is cross-sectional; the output is not future disease risk or an individual's clinical probability.
+> Educational/research use only. This is not clinically validated and must not be used for diagnosis, treatment, screening, or care decisions. The dataset label is cross-sectional and is not a future disease-risk estimate.
 
-## Leakage-safe training and evaluation
+## Modular project structure
 
-GitHub Actions reads the original semicolon-separated dataset from `data/cardio_train.csv`, validates it, and runs the MLP training pipeline.
+Each pipeline responsibility has its own Python module. `train.py` only orchestrates the stages.
 
-1. **Holdout first:** stratified 80/20 train/test split before cross-validation. The test partition is isolated.
-2. **Five-fold cross-fitting:** `StratifiedKFold(5)` runs only on the training partition. Each row in the training partition receives one out-of-fold (OOF) prediction from a model that did not train on that row.
-3. **Fold-local preprocessing:** numeric median imputation and standardization, categorical imputation and one-hot encoding, and binary imputation are fitted separately inside each fold's training data. No scaler or category vocabulary is fitted on validation/test rows.
-4. **Epoch selection:** each fold uses an inner stratified validation split for early stopping. The selected epoch counts are aggregated by their median.
-5. **Threshold selection:** the high-recall threshold is chosen from OOF training predictions only, maximizing recall subject to OOF precision >= 0.55.
-6. **Final refit:** preprocessing is fitted on the full training partition, then a fresh MLP is trained for the median selected epoch count.
-7. **One final test evaluation:** the frozen model and OOF-selected threshold are evaluated on the untouched test partition once.
+| Module | Responsibility |
+|---|---|
+| `config.py` | Shared paths and reproducible settings |
+| `validate_data.py` | Validate source file, schema, target and row count |
+| `preprocessing.py` | Deterministic feature engineering and fold-fitted transforms |
+| `data_split.py` | Create the untouched stratified test split |
+| `cross_validation.py` | Generate five-fold out-of-fold predictions |
+| `model_training.py` | Train, early-stop, refit and predict with the MLP |
+| `threshold_selection.py` | Select threshold from OOF predictions |
+| `evaluation.py` | Calculate classification metrics |
+| `save_artifacts.py` | Save weights, preprocessing, metrics and training history |
+| `train.py` | Run the complete pipeline in order |
+| `app.py` | Streamlit inference interface |
 
-The test partition is not used for preprocessing, epoch selection, threshold selection, feature selection, or hyperparameter tuning.
+This is a modular single-process pipeline, not a set of separately deployed network services. Each stage can be tested and run independently.
 
-## Published artifacts
+## Leakage-safe evaluation
 
-The workflow commits these generated files to `artifacts/`:
+1. Validate the original semicolon-separated CSV at `data/cardio_train.csv`.
+2. Apply deterministic row-level cleaning and feature engineering.
+3. Split the dataset into stratified 80% development and 20% test partitions before cross-validation.
+4. Run five-fold StratifiedKFold only on the development partition.
+5. Fit imputation, one-hot encoding and scaling separately inside each fold.
+6. Generate one out-of-fold prediction for each development row.
+7. Select the high-recall threshold from OOF predictions subject to OOF precision >= 0.55.
+8. Use inner validation in each fold for early stopping and use the median selected epoch count for final refitting.
+9. Fit the final preprocessing configuration on all development rows and train a fresh MLP.
+10. Evaluate the frozen pipeline once on the untouched test partition.
 
-- `mlp_state_dict.pt` — final MLP weights
-- `preprocessing.json` — final training-fitted imputation, scaling and category configuration
-- `metrics.json` — fold metrics, OOF metrics, threshold provenance and untouched test metrics
-- `training_history.csv` — inner-validation training histories by fold
+The test partition is never used for preprocessing, model selection, epoch selection or threshold selection.
 
-The workflow runs on pushes affecting training code and can also be started manually from **GitHub → Actions → Train and publish high-recall MLP → Run workflow**. It uses the repository's `GITHUB_TOKEN` with contents-write permission to save artifacts.
+## Artifacts
 
-## Dataset
+The GitHub Actions workflow saves these files to `artifacts/`:
 
-Upload the original CSV to `data/cardio_train.csv`. It must be semicolon-separated and contain the expected columns documented in [data/README.md](data/README.md).
-
-## High-recall policy and limitations
-
-The operating threshold prioritizes recall subject to an OOF precision constraint. High recall may produce many false positives. This is an experimental decision rule, not a clinically validated screening policy. Model scores are uncalibrated and must not be interpreted as disease probabilities.
-
-One public cross-sectional dataset; no external/temporal validation, calibration study, confidence intervals, subgroup fairness audit, or clinical validation. A negative result must never be used to rule out disease or delay professional medical care.
+- `mlp_state_dict.pt`
+- `preprocessing.json`
+- `metrics.json`
+- `training_history.csv`
 
 ## Run locally
 
 ```bash
 pip install -r requirements.txt
+python validate_data.py
 python train.py
 pytest -q
 streamlit run app.py
 ```
+
+Upload the original CSV to `data/cardio_train.csv`. See [data/README.md](data/README.md) for the required schema.
+
+## Limitations
+
+The public dataset is cross-sectional. There is no external or temporal validation, calibration study, confidence interval analysis, subgroup fairness audit or clinical validation. Model scores are uncalibrated. A negative result must never be used to rule out disease or delay professional medical care.
