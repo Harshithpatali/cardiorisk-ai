@@ -6,7 +6,7 @@ A Streamlit research demonstration powered by **one model only: a PyTorch MLP (1
 
 ## Training and model artifacts
 
-GitHub Actions downloads the public cardiovascular dataset, validates its schema, trains the MLP, selects the threshold on the validation split, evaluates it once on the held-out test split, runs tests, and commits these generated files back to `artifacts/`:
+GitHub Actions reads your uploaded original dataset from `data/cardio_train.csv`, validates its schema, trains the MLP, selects the threshold on the validation split, evaluates it once on the held-out test split, runs tests, and commits these generated files back to `artifacts/`:
 
 - `mlp_state_dict.pt` — trained PyTorch weights
 - `preprocessing.json` — training-fitted scaler and category configuration
@@ -15,7 +15,7 @@ GitHub Actions downloads the public cardiovascular dataset, validates its schema
 
 The workflow runs on pushes affecting training code and can also be started manually from **GitHub → Actions → Train and publish high-recall MLP → Run workflow**. It uses the repository's `GITHUB_TOKEN` with contents-write permission to save the trained artifacts in the repository.
 
-Dataset source: [mlcourse.ai cardiovascular training dataset](https://raw.githubusercontent.com/Yorko/mlcourse.ai/main/data/mlbootcamp5_train.csv). The workflow downloads it at runtime; the raw dataset is not committed to this repository.
+## Upload your original dataset\n\nUpload the original semicolon-separated CSV to `data/cardio_train.csv`. See [`data/README.md`](data/README.md) for the required columns. The dataset itself is ignored by Git so the raw file is not committed. Once uploaded, run the workflow manually from GitHub Actions.
 
 ## High-recall decision policy
 
@@ -32,7 +32,7 @@ pytest -q
 streamlit run app.py
 ```
 
-Download the dataset to `cardio_train.csv` before running `train.py` or the dataset tests.
+Place your original dataset at `data/cardio_train.csv` before running `train.py` or the dataset tests.
 
 ## Limitations
 
