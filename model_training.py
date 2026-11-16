@@ -120,10 +120,15 @@ def train_with_early_stopping(
     return model, best_epoch, best_loss, history
 
 
-def train_fixed_epochs(\n    features, target, epochs, seed, batch_size, dropout=0.3,\n    hidden_dims=(128, 64, 32), positive_weight_multiplier=1.3,\n):
+def train_fixed_epochs(
+    features, target, epochs, seed, batch_size, dropout=0.3,
+    hidden_dims=(128, 64, 32), positive_weight_multiplier=1.3,
+):
     seed_everything(seed)
-    model = CardioMLP(features.shape[1])
-    criterion = _loss_function(target)
+    model = CardioMLP(
+        features.shape[1], dropout=dropout, hidden_dims=hidden_dims
+    )
+    criterion = _loss_function(target, positive_weight_multiplier)
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=1e-3,
