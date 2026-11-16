@@ -181,7 +181,8 @@ def subgroup_report(frame, y, p, threshold):
 
 def main():
     ARTIFACTS.mkdir(exist_ok=True)
-    data = clean_dataset(DATA).reset_index(drop=True)
+    raw_data = pd.read_csv(DATA, sep=";")
+    data = clean_dataset(raw_data).reset_index(drop=True)
     x = data[FEATURE_COLUMNS].reset_index(drop=True)
     y = data["cardio"].astype(int).to_numpy()
     x_dev, _x_test, y_dev, _y_test = train_test_split(
@@ -236,6 +237,18 @@ def main():
     result = {
         "analysis_scope": "development partition only; final holdout deliberately not evaluated in this secondary benchmark",
         "dataset_rows_after_cleaning": int(len(data)),
+        "data_quality": {
+            "raw_rows": int(len(raw_data)),
+            "rows_after_deterministic_cleaning": int(len(data)),
+            "rows_removed_by_cleaning": int(len(raw_data) - len(data)),
+            "duplicate_full_rows": int(raw_data.duplicated().sum()),
+            "duplicate_ids": int(raw_data["id"].duplicated().sum()) if "id" in raw_data else None,
+            "missing_values_by_column": {
+                str(column): int(count)
+                for column, count in raw_data.isna().sum().items()
+            },
+            "target_prevalence_after_cleaning": float(data["cardio"].mean()),
+        },
         "development_rows": int(len(x_dev)),
         "folds": FOLDS,
         "selection_rule": "highest mean cross-validation ROC-AUC; descriptive benchmark only",
