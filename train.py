@@ -1,5 +1,6 @@
 """Leakage-aware orchestration for the cross-fitted PyTorch MLP."""
 import numpy as np
+import pandas as pd
 
 from config import (
     ARTIFACT_DIR, BATCH_SIZE, EARLY_STOPPING_PATIENCE, MAX_EPOCHS,
@@ -7,7 +8,7 @@ from config import (
 )
 from cross_validation import run_cross_validation
 from data_split import split_holdout
-from evaluation import evaluate_predictions
+from evaluation import evaluate_predictions, threshold_comparison
 from model import CardioMLP
 from model_training import predict_probabilities, train_fixed_epochs
 from preprocessing import (
@@ -26,6 +27,9 @@ def main():
     # Split once before any learned preprocessing or model selection.
     x_train, x_test, y_train, y_test = split_holdout(
         features, target, TEST_SIZE, RANDOM_SEED
+    )
+    metadata_train, _, _, _ = split_holdout(
+        data[["age_years", "gender"]], target, TEST_SIZE, RANDOM_SEED
     )
 
     oof, fold_reports, selected_epochs, histories = run_cross_validation(
@@ -85,6 +89,7 @@ def main():
             "oof_rows": int(len(oof)),
         },
         "test": test_metrics,
+        "threshold_analysis": threshold_comparison(y_train, oof),
         "operating_points": {
             "high_recall": {
                 "threshold": float(threshold),
@@ -102,6 +107,12 @@ def main():
         "warning": "Research/educational dataset metrics only; not clinical validation or individual medical risk.",
     }
     save_artifacts(final_model, final_config, report, histories, ARTIFACT_DIR)
+    pd.DataFrame({
+        "target": y_train,
+        "oof_probability": oof,
+        "age_years": metadata_train["age_years"].to_numpy(),
+        "gender": metadata_train["gender"].to_numpy(),
+    }).to_csv(ARTIFACT_DIR / "mlp_oof_predictions.csv", index=False)
     print("OOF development metrics:", oof_metrics)
     print("Held-out test metrics:", test_metrics)
 
