@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import pandas as pd
+
 import streamlit as st
 import torch
 
@@ -530,6 +532,137 @@ for column, (label, value, foot) in zip(metric_columns, metric_values):
         """,
         unsafe_allow_html=True,
     )
+
+
+
+@st.cache_data
+def load_research_report():
+    path = ARTIFACTS / "research_validation.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+@st.cache_data
+def load_operating_frontier():
+    path = ARTIFACTS / "mlp_operating_point_frontier.json"
+    return json.loads(path.read_text()) if path.exists() else {"rows": []}
+
+research_report = load_research_report()
+frontier_report = load_operating_frontier()
+st.markdown(
+    """
+    <div class="section-head">
+        <div><h2>Research analytics workspace</h2>
+        <p>Cross-validation, operating-point analysis and model diagnostics</p></div>
+        <p>MODEL INTELLIGENCE / 360°</p>
+    </div>
+    """, unsafe_allow_html=True,
+)
+overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab = st.tabs(
+    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark"]
+)
+with overview_tab:
+    left, right = st.columns([1.25, 1])
+    with left:
+        st.subheader("Held-out model performance")
+        rows = [
+            {"Metric": "ROC-AUC", "Value": metrics["roc_auc"]},
+            {"Metric": "PR-AUC", "Value": metrics["pr_auc"]},
+            {"Metric": "Recall", "Value": metrics["recall"]},
+            {"Metric": "Specificity", "Value": metrics["specificity"]},
+            {"Metric": "Precision", "Value": metrics["precision"]},
+            {"Metric": "F1", "Value": metrics["f1"]},
+            {"Metric": "Balanced accuracy", "Value": (metrics["recall"] + metrics["specificity"]) / 2},
+            {"Metric": "Brier score", "Value": metrics.get("brier_score", float("nan"))},
+            {"Metric": "ECE · 10 bins", "Value": metrics.get("ece_10_bins", float("nan"))},
+        ]
+        st.dataframe(pd.DataFrame(rows).style.format({"Value": "{:.4f}"}), use_container_width=True, hide_index=True)
+    with right:
+        st.subheader("Confusion matrix")
+        st.dataframe(pd.DataFrame(metrics["confusion_matrix"],
+            index=["Actual 0", "Actual 1"], columns=["Predicted 0", "Predicted 1"]),
+            use_container_width=True)
+        st.caption("Rows = actual labels · columns = predicted labels")
+        st.metric("Selected threshold", f"{threshold:.4f}")
+    folds = report.get("cross_validation", {}).get("folds", [])
+    if folds:
+        st.subheader("Five-fold MLP validation")
+        frame = pd.DataFrame([{"Fold": x["fold"], "Rows": x["rows"],
+            "ROC-AUC": x["metrics_at_0_5"]["roc_auc"],
+            "PR-AUC": x["metrics_at_0_5"]["pr_auc"],
+            "Selected epochs": x["selected_epochs"]} for x in folds])
+        st.dataframe(frame.style.format({"ROC-AUC": "{:.3f}", "PR-AUC": "{:.3f}"}),
+                     use_container_width=True, hide_index=True)
+with threshold_tab:
+    st.subheader("Recall-constrained operating-point explorer")
+    st.caption("Explore the highest development OOF threshold meeting a recall target. This does not change deployed inference.")
+    rows = frontier_report.get("rows", [])
+    if rows:
+        frame = pd.DataFrame(rows)
+        st.dataframe(frame[["recall_floor", "threshold", "recall", "specificity",
+            "precision", "f1", "balanced_accuracy", "fp", "fn"]].style.format({
+            c: "{:.3f}" for c in ["recall_floor", "threshold", "recall", "specificity",
+                                  "precision", "f1", "balanced_accuracy"]}),
+            use_container_width=True, hide_index=True)
+        floor = st.select_slider("Minimum recall target", options=[0.80, 0.85, 0.90, 0.93, 0.95],
+                                 value=0.90, format_func=lambda x: f"{x:.0%}")
+        selected = min(rows, key=lambda x: abs(x["recall_floor"] - floor))
+        a,b,c,d = st.columns(4)
+        a.metric("OOF threshold", f'{selected["threshold"]:.4f}')
+        b.metric("OOF recall", f'{selected["recall"]:.1%}')
+        c.metric("OOF specificity", f'{selected["specificity"]:.1%}')
+        d.metric("OOF F1", f'{selected["f1"]:.3f}')
+        st.info(f'OOF confusion counts · TN {selected["tn"]:,} · FP {selected["fp"]:,} · FN {selected["fn"]:,} · TP {selected["tp"]:,}')
+        st.line_chart(frame.set_index("recall_floor")[["recall", "specificity", "precision", "f1"]])
+    else:
+        st.warning("Operating-point frontier is not available yet.")
+with calibration_tab:
+    st.subheader("Probability calibration diagnostics")
+    bins = research_report.get("calibration", {}).get("reliability_bins", [])
+    if bins:
+        frame = pd.DataFrame(bins)
+        st.line_chart(frame.set_index("mean_score")[["observed_rate"]])
+        st.dataframe(frame, use_container_width=True, hide_index=True)
+        st.caption("Development benchmark reliability bins; not a clinical calibration study.")
+    else:
+        st.info("Calibration bins are not available.")
+with subgroup_tab:
+    st.subheader("Descriptive subgroup diagnostics")
+    groups = research_report.get("deployed_mlp_oof_analysis", {}).get("subgroup_analysis", {})
+    if groups:
+        rows = []
+        for dimension, members in groups.items():
+            for name, values in members.items():
+                rows.append({"Dimension": dimension.replace("_", " ").title(),
+                    "Group": name.replace("_", " ").title(), "N": values.get("n"),
+                    "Prevalence": values.get("prevalence"), "Recall": values.get("recall"),
+                    "Specificity": values.get("specificity"), "Precision": values.get("precision"),
+                    "Balanced accuracy": values.get("balanced_accuracy")})
+        frame = pd.DataFrame(rows)
+        st.dataframe(frame.style.format({k: "{:.1%}" for k in
+            ["Prevalence", "Recall", "Specificity", "Precision", "Balanced accuracy"]}),
+            use_container_width=True, hide_index=True)
+        st.warning("Descriptive comparisons only; these do not establish fairness or clinical equivalence.")
+    else:
+        st.info("MLP subgroup diagnostics are not available.")
+with benchmark_tab:
+    st.subheader("Cross-validated model benchmark")
+    models = research_report.get("models", {})
+    if models:
+        rows = []
+        for name, values in models.items():
+            stats = values.get("fold_mean_95ci", {})
+            rows.append({"Model": name.replace("_", " ").title(),
+                "ROC-AUC": stats.get("roc_auc", {}).get("mean"),
+                "ROC-AUC CI low": stats.get("roc_auc", {}).get("ci95_low"),
+                "ROC-AUC CI high": stats.get("roc_auc", {}).get("ci95_high"),
+                "PR-AUC": stats.get("pr_auc", {}).get("mean"),
+                "Brier": stats.get("brier_score", {}).get("mean"),
+                "ECE": stats.get("ece_10_bins", {}).get("mean")})
+        st.dataframe(pd.DataFrame(rows).style.format({
+            k: "{:.3f}" for k in ["ROC-AUC", "ROC-AUC CI low", "ROC-AUC CI high", "PR-AUC", "Brier", "ECE"]}),
+            use_container_width=True, hide_index=True)
+        st.caption("Development-only reference models. The deployed PyTorch MLP remains the inference model.")
+    else:
+        st.info("Benchmark report is not available.")
 
 
 st.markdown(
