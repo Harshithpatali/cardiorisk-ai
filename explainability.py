@@ -90,3 +90,24 @@ def explain_observation(
     average_gradients = accumulated_gradients / steps
     attributions = difference * average_gradients
     return attributions.detach().cpu().numpy().reshape(-1)
+
+def explanation_diagnostics(model, background: torch.Tensor, transformed: np.ndarray, attributions: np.ndarray):
+    """Check the Integrated Gradients completeness residual for one row.
+
+    A small residual is a numerical sanity check, not evidence that the
+    explanation is causal, clinically meaningful, or stable across samples.
+    """
+    model.eval()
+    observation = torch.as_tensor(transformed, dtype=torch.float32)
+    baseline = background.mean(dim=0, keepdim=True)
+    with torch.no_grad():
+        output_delta = float((model(observation).sum() - model(baseline).sum()).item())
+    attribution_sum = float(np.asarray(attributions, dtype=float).sum())
+    residual = output_delta - attribution_sum
+    return {
+        "output_delta": output_delta,
+        "attribution_sum": attribution_sum,
+        "completeness_residual": float(residual),
+        "absolute_residual": float(abs(residual)),
+        "relative_residual": float(abs(residual) / max(abs(output_delta), 1e-8)),
+    }
