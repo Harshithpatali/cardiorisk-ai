@@ -49,3 +49,13 @@ def test_threshold_and_subgroup_reports_are_complete():
     groups = subgroup_report(frame, y, p, 0.5)
     assert set(groups) == {"age_band", "gender"}
     assert groups["gender"]["female"]["n"] == 250
+
+
+def test_operating_point_frontier_respects_recall_floor_and_maximizes_threshold():
+    from operating_point_analysis import operating_point_for_recall_floor
+    y = np.array([0, 0, 0, 1, 1, 1])
+    p = np.array([0.1, 0.3, 0.4, 0.5, 0.7, 0.9])
+    row = operating_point_for_recall_floor(y, p, 2 / 3)
+    assert row["recall"] >= 2 / 3
+    assert row["threshold"] == 0.5
+    assert row["specificity"] == 1.0
