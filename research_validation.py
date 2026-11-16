@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score, average_precision_score, balanced_accuracy_score,
@@ -87,9 +88,11 @@ def make_models():
             n_estimators=250, min_samples_leaf=3, max_features="sqrt",
             class_weight="balanced_subsample", n_jobs=-1, random_state=SEED,
         ),
-        "hist_gradient_boosting": HistGradientBoostingClassifier(
-            max_iter=150, learning_rate=0.08, max_leaf_nodes=15,
-            l2_regularization=1.0, random_state=SEED,
+        "xgboost": XGBClassifier(
+            n_estimators=250, max_depth=4, learning_rate=0.05,
+            subsample=0.8, colsample_bytree=0.8, min_child_weight=5,
+            reg_lambda=2.0, objective="binary:logistic",
+            eval_metric="logloss", n_jobs=-1, random_state=SEED,
         ),
         "logistic_sigmoid_calibrated": CalibratedClassifierCV(
             estimator=LogisticRegression(
