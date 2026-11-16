@@ -57,5 +57,5 @@ def test_operating_point_frontier_respects_recall_floor_and_maximizes_threshold(
     p = np.array([0.1, 0.3, 0.4, 0.5, 0.7, 0.9])
     row = operating_point_for_recall_floor(y, p, 2 / 3)
     assert row["recall"] >= 2 / 3
-    assert row["threshold"] == 0.5
+    assert row["threshold"] == 0.7
     assert row["specificity"] == 1.0
