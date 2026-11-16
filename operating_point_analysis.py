@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, precision_recall_curve
 
 ROOT = Path(__file__).resolve().parent
 ARTIFACTS = ROOT / "artifacts"
@@ -16,15 +16,14 @@ def operating_point_for_recall_floor(target, probabilities, recall_floor):
         raise ValueError("target and probabilities must be non-empty, aligned vectors")
     if not 0 < recall_floor <= 1:
         raise ValueError("recall_floor must be in (0, 1]")
-    valid = []
-    for threshold in np.unique(np.r_[0.0, scores, 1.0]):
-        pred = (scores >= threshold).astype(int)
-        recall = float(recall_score(y, pred, zero_division=0))
-        if recall + 1e-12 >= recall_floor:
-            valid.append((float(threshold), pred, recall))
-    if not valid:
+    precision_curve, recall_curve, thresholds = precision_recall_curve(y, scores)
+    eligible = np.flatnonzero(recall_curve[:-1] + 1e-12 >= recall_floor)
+    if not len(eligible):
         raise RuntimeError(f"No threshold satisfies recall floor {recall_floor}")
-    threshold, pred, recall = max(valid, key=lambda item: item[0])
+    selected_index = int(eligible[-1])
+    threshold = float(thresholds[selected_index])
+    pred = (scores >= threshold).astype(int)
+    recall = float(recall_score(y, pred, zero_division=0))
     tn, fp, fn, tp = confusion_matrix(y, pred, labels=[0, 1]).ravel()
     specificity = float(tn / max(tn + fp, 1))
     precision = float(precision_score(y, pred, zero_division=0))
