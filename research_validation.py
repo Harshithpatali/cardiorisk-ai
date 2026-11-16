@@ -189,7 +189,10 @@ def main():
         x, y, test_size=0.20, random_state=SEED, stratify=y
     )
     x_dev = x_dev.reset_index(drop=True)
-    dev_indices, _ = train_test_split(\n        np.arange(len(data)), test_size=0.20, random_state=SEED, stratify=y\n    )\n    dev_frame = data.iloc[dev_indices].reset_index(drop=True)
+    dev_indices, _ = train_test_split(
+        np.arange(len(data)), test_size=0.20, random_state=SEED, stratify=y
+    )
+    dev_frame = data.iloc[dev_indices].reset_index(drop=True)
 
     cv = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED)
     model_factories = make_models()
