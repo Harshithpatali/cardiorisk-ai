@@ -46,7 +46,7 @@ The GitHub Actions workflow saves these files to `artifacts/`:
 - `mlp_state_dict.pt`
 - `preprocessing.json`
 - `metrics.json`
-- `training_history.csv`
+- `training_history.csv`\n- `research_validation.json` — cross-validated model comparison, confidence intervals, calibration diagnostics and subgroup analysis\n- `benchmark_folds.csv` — fold-level benchmark results\n- `threshold_analysis.csv` — operating-point trade-offs
 
 ## Deploy on Streamlit Community Cloud
 
@@ -74,4 +74,4 @@ Upload the original CSV to `data/cardio_train.csv`. See [data/README.md](data/RE
 
 ## Limitations
 
-The public dataset is cross-sectional. There is no external or temporal validation, calibration study, confidence interval analysis, subgroup fairness audit or clinical validation. Model scores are uncalibrated. A negative result must never be used to rule out disease or delay professional medical care.
+The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. The secondary benchmark adds internal cross-validation intervals and descriptive subgroup diagnostics, but these do not establish fairness or generalisability. The deployed MLP score remains uncalibrated; calibration diagnostics in the benchmark are not a clinical calibration study. A negative result must never be used to rule out disease or delay professional medical care.

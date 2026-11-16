@@ -8,7 +8,9 @@ import torch
 
 from model import CardioMLP
 from preprocessing import make_feature_row, transform_frame
-from explainability import build_background, explain_observation, feature_names
+from explainability import (
+    build_background, explain_observation, explanation_diagnostics, feature_names,
+)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -681,9 +683,12 @@ if submitted:
                 background = load_explanation_background("cardio-background-v1")
                 contributions = explain_observation(model, background, transformed)
                 labels = feature_names(config)
+            diagnostics = explanation_diagnostics(
+                model, background, transformed, contributions
+            )
 
             if len(contributions) != len(labels):
-                raise ValueError("SHAP values do not match the saved feature schema.")
+                raise ValueError("Integrated Gradients attributions do not match the saved feature schema.")
 
             ranked = sorted(
                 zip(labels, contributions),
@@ -727,6 +732,11 @@ if submitted:
                     unsafe_allow_html=True,
                 )
 
+            st.caption(
+                f"Integrated Gradients completeness check · absolute residual: {diagnostics['absolute_residual']:.6f}. "
+                "This is a numerical consistency diagnostic, not clinical validation."
+            )
+
             st.markdown(
                 """
                 <div class="explain-note">
@@ -752,6 +762,11 @@ with st.expander("How this model was evaluated"):
     st.write(
         "The final test partition was held out from preprocessing, model selection, "
         "epoch selection, and threshold selection."
+    )
+    st.write(
+        f"High-recall threshold: {threshold:.4f}. Test specificity: {metrics['specificity']:.1%}; "
+        f"balanced accuracy: {(metrics['recall'] + metrics['specificity']) / 2:.1%}. "
+        f"Confusion matrix (actual rows, predicted columns): {metrics['confusion_matrix']}."
     )
     st.write(
         "The dataset is cross-sectional. There is no external or temporal validation, "

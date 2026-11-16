@@ -11,15 +11,6 @@ on:
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/train-mlp.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "data/cardio_train.csv"
-      - "*.py"
-      - "tests/**"
-      - "requirements.txt"
-      - ".github/workflows/train-mlp.yml"
 
 permissions:
   contents: write
@@ -31,12 +22,12 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           persist-credentials: true
 
       - name: Set up Python
@@ -60,8 +51,11 @@ jobs:
       - name: Train and evaluate modular pipeline
         run: python train.py
 
+      - name: Run cross-validated benchmark and statistical audit
+        run: python research_validation.py
+
       - name: Run automated tests
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Validate saved artifacts
         run: |
@@ -87,10 +81,17 @@ jobs:
           assert "operating_points" in metrics
           assert "high_recall" in metrics["operating_points"]
           assert (artifact_dir / "training_history.csv").stat().st_size > 0
+          research = json.loads((artifact_dir / "research_validation.json").read_text())
+          assert len(research["models"]) == 4
+          assert len(research["fold_results"]) == 20
+          assert research["selected_benchmark_reference"] in research["models"]
+          assert "deployed_mlp_oof_analysis" in research
+          assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
 
       - name: Commit trained artifacts
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -98,6 +99,10 @@ jobs:
           git add artifacts/preprocessing.json
           git add artifacts/metrics.json
           git add artifacts/training_history.csv
+          git add artifacts/research_validation.json
+          git add artifacts/benchmark_folds.csv
+          git add artifacts/threshold_analysis.csv
+          git add artifacts/mlp_oof_predictions.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
