@@ -234,6 +234,18 @@ def main():
     )
     selected_scores = oof[selected]
     selected_threshold = 0.5
+    mlp_oof_path = ARTIFACTS / "mlp_oof_predictions.csv"
+    mlp_report_path = ARTIFACTS / "metrics.json"
+    if not mlp_oof_path.exists() or not mlp_report_path.exists():
+        raise FileNotFoundError("Run train.py first to create MLP OOF predictions and metrics.")
+    mlp_oof = pd.read_csv(mlp_oof_path)
+    mlp_report = json.loads(mlp_report_path.read_text())
+    mlp_threshold = float(mlp_report["threshold"])
+    mlp_probabilities = mlp_oof["oof_probability"].to_numpy(dtype=float)
+    mlp_targets = mlp_oof["target"].to_numpy(dtype=int)
+    mlp_subgroups = subgroup_report(
+        mlp_oof[["age_years", "gender"]], mlp_targets, mlp_probabilities, mlp_threshold
+    )
     result = {
         "analysis_scope": "development partition only; final holdout deliberately not evaluated in this secondary benchmark",
         "dataset_rows_after_cleaning": int(len(data)),
@@ -253,6 +265,14 @@ def main():
         "folds": FOLDS,
         "selection_rule": "highest mean cross-validation ROC-AUC; descriptive benchmark only",
         "selected_benchmark_reference": selected,
+        "deployed_mlp_oof_analysis": {
+            "metrics_at_selected_threshold": classification_metrics(
+                mlp_targets, mlp_probabilities, mlp_threshold
+            ),
+            "threshold_analysis": mlp_report.get("threshold_analysis", []),
+            "subgroup_analysis": mlp_subgroups,
+            "note": "Out-of-fold development predictions for the deployed PyTorch MLP; no final test holdout re-used.",
+        },
         "models": summary,
         "fold_results": fold_rows,
         "threshold_analysis": threshold_table(y_dev, selected_scores),
