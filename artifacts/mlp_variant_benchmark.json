@@ -1,0 +1,104 @@
+{
+  "method": "3-fold stratified development OOF; fold-specific preprocessing; fixed epoch count inherited from primary CV",
+  "baseline": "baseline_128_64_32_pw1.3",
+  "variants": [
+    {
+      "variant": "baseline_128_64_32_pw1.3",
+      "hidden_dims": [
+        128,
+        64,
+        32
+      ],
+      "dropout": 0.3,
+      "positive_weight_multiplier": 1.3,
+      "epochs": 22,
+      "oof_roc_auc": 0.7999863795136424,
+      "oof_pr_auc": 0.781085207822612,
+      "folds": [
+        {
+          "fold": 1,
+          "roc_auc": 0.7980446400177352,
+          "pr_auc": 0.7786549436803882
+        },
+        {
+          "fold": 2,
+          "roc_auc": 0.7981510288083564,
+          "pr_auc": 0.7802946397579434
+        },
+        {
+          "fold": 3,
+          "roc_auc": 0.8044334731993625,
+          "pr_auc": 0.7865505226542995
+        }
+      ],
+      "scope": "three-fold development-only OOF experiment"
+    },
+    {
+      "variant": "compact_64_32_pw1.0",
+      "hidden_dims": [
+        64,
+        32
+      ],
+      "dropout": 0.2,
+      "positive_weight_multiplier": 1.0,
+      "epochs": 22,
+      "oof_roc_auc": 0.7999990070485887,
+      "oof_pr_auc": 0.7804564704065247,
+      "folds": [
+        {
+          "fold": 1,
+          "roc_auc": 0.7982180242659481,
+          "pr_auc": 0.7776060379048026
+        },
+        {
+          "fold": 2,
+          "roc_auc": 0.7979199739436809,
+          "pr_auc": 0.7796599408337497
+        },
+        {
+          "fold": 3,
+          "roc_auc": 0.8042508291237151,
+          "pr_auc": 0.7860530929886083
+        }
+      ],
+      "scope": "three-fold development-only OOF experiment"
+    },
+    {
+      "variant": "wide_256_128_64_pw1.0",
+      "hidden_dims": [
+        256,
+        128,
+        64
+      ],
+      "dropout": 0.4,
+      "positive_weight_multiplier": 1.0,
+      "epochs": 22,
+      "oof_roc_auc": 0.8001052446093337,
+      "oof_pr_auc": 0.7812597449331078,
+      "folds": [
+        {
+          "fold": 1,
+          "roc_auc": 0.7985698224665151,
+          "pr_auc": 0.7795131701176975
+        },
+        {
+          "fold": 2,
+          "roc_auc": 0.7980831488913386,
+          "pr_auc": 0.7808715024980679
+        },
+        {
+          "fold": 3,
+          "roc_auc": 0.8045997345751408,
+          "pr_auc": 0.7863546729802688
+        }
+      ],
+      "scope": "three-fold development-only OOF experiment"
+    }
+  ],
+  "promotion_policy": "No variant is promoted automatically. Require repeatable gains and a fresh independent evaluation before deployment.",
+  "limitations": [
+    "Exploratory experiment; no final holdout evaluation was performed for these variants.",
+    "Architecture comparisons use three folds and should not be treated as definitive model selection.",
+    "The source dataset is cross-sectional and does not establish future disease risk."
+  ]
+}
