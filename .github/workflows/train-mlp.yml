@@ -116,7 +116,9 @@ jobs:
           git add artifacts/threshold_analysis.csv
           git add artifacts/mlp_oof_predictions.csv
           git add artifacts/mlp_operating_point_frontier.json
-          git add artifacts/mlp_operating_point_frontier.csv\n          git add artifacts/mlp_variant_benchmark.json\n          git add artifacts/mlp_variant_benchmark.csv
+          git add artifacts/mlp_operating_point_frontier.csv
+          git add artifacts/mlp_variant_benchmark.json
+          git add artifacts/mlp_variant_benchmark.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
