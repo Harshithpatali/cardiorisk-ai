@@ -645,6 +645,21 @@ with subgroup_tab:
         st.info("MLP subgroup diagnostics are not available.")
 with benchmark_tab:
     st.subheader("Cross-validated model benchmark")
+    variant_report_path = ARTIFACTS / "mlp_variant_benchmark.json"
+    if variant_report_path.exists():
+        variant_report = json.loads(variant_report_path.read_text())
+        st.markdown("#### Experimental MLP architecture comparison")
+        variant_rows = [{
+            "Variant": item["variant"], "Architecture": "–".join(map(str, item["hidden_dims"])),
+            "Dropout": item["dropout"], "Positive weight multiplier": item["positive_weight_multiplier"],
+            "OOF ROC-AUC": item["oof_roc_auc"], "OOF PR-AUC": item["oof_pr_auc"],
+        } for item in variant_report.get("variants", [])]
+        if variant_rows:
+            st.dataframe(pd.DataFrame(variant_rows).style.format({
+                "Dropout": "{:.2f}", "Positive weight multiplier": "{:.2f}",
+                "OOF ROC-AUC": "{:.3f}", "OOF PR-AUC": "{:.3f}",
+            }), use_container_width=True, hide_index=True)
+            st.caption("Experimental three-fold development OOF results. No candidate is promoted automatically.")
     models = research_report.get("models", {})
     if models:
         rows = []
