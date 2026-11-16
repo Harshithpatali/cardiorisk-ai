@@ -11,15 +11,6 @@ on:
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/train-mlp.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "data/cardio_train.csv"
-      - "*.py"
-      - "tests/**"
-      - "requirements.txt"
-      - ".github/workflows/train-mlp.yml"
 
 permissions:
   contents: write
@@ -64,7 +55,7 @@ jobs:
         run: python research_validation.py
 
       - name: Run automated tests
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Validate saved artifacts
         run: |

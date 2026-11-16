@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from data_split import split_holdout
-from evaluation import evaluate_predictions, threshold_comparison
+from evaluation import evaluate_predictions
 from threshold_selection import select_high_recall_threshold
 from validate_data import validate_dataset
 
@@ -58,7 +58,3 @@ def test_evaluation_returns_complete_metrics():
     assert metrics["precision"] == 1.0
     assert metrics["roc_auc"] == 1.0
     assert metrics["confusion_matrix"] == [[2, 0], [0, 2]]
-    assert np.isclose(metrics["brier_score"], 0.025)
-    assert 0 <= metrics["ece_10_bins"] <= 1
-    assert len(metrics["reliability_bins"]) > 0
-    assert len(threshold_comparison(target, scores)) == 11

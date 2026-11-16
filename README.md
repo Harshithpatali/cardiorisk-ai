@@ -46,8 +46,7 @@ The GitHub Actions workflow saves these files to `artifacts/`:
 - `mlp_state_dict.pt`
 - `preprocessing.json`
 - `metrics.json`
-- `training_history.csv`\n- `research_validation.json` — cross-validated model comparison, confidence intervals, calibration diagnostics and subgroup analysis for benchmark models and the deployed MLP's OOF predictions\n- `benchmark_folds.csv` — fold-level benchmark results\n- `threshold_analysis.csv` — benchmark operating-point trade-offs
-- `mlp_oof_predictions.csv` — development-only out-of-fold MLP scores with age/gender fields for descriptive subgroup analysis
+- `training_history.csv`\n- `research_validation.json` — cross-validated model comparison, confidence intervals, calibration diagnostics and subgroup analysis\n- `benchmark_folds.csv` — fold-level benchmark results\n- `threshold_analysis.csv` — operating-point trade-offs
 
 ## Deploy on Streamlit Community Cloud
 

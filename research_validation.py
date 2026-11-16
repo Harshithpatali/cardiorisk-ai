@@ -11,8 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score, average_precision_score, balanced_accuracy_score,
@@ -88,11 +87,9 @@ def make_models():
             n_estimators=250, min_samples_leaf=3, max_features="sqrt",
             class_weight="balanced_subsample", n_jobs=-1, random_state=SEED,
         ),
-        "xgboost": XGBClassifier(
-            n_estimators=250, max_depth=4, learning_rate=0.05,
-            subsample=0.8, colsample_bytree=0.8, min_child_weight=5,
-            reg_lambda=2.0, objective="binary:logistic",
-            eval_metric="logloss", n_jobs=-1, random_state=SEED,
+        "hist_gradient_boosting": HistGradientBoostingClassifier(
+            max_iter=150, learning_rate=0.08, max_leaf_nodes=15,
+            l2_regularization=1.0, random_state=SEED,
         ),
         "logistic_sigmoid_calibrated": CalibratedClassifierCV(
             estimator=LogisticRegression(
@@ -192,10 +189,7 @@ def main():
         x, y, test_size=0.20, random_state=SEED, stratify=y
     )
     x_dev = x_dev.reset_index(drop=True)
-    dev_indices, _ = train_test_split(
-        np.arange(len(data)), test_size=0.20, random_state=SEED, stratify=y
-    )
-    dev_frame = data.iloc[dev_indices].reset_index(drop=True)
+    dev_indices, _ = train_test_split(\n        np.arange(len(data)), test_size=0.20, random_state=SEED, stratify=y\n    )\n    dev_frame = data.iloc[dev_indices].reset_index(drop=True)
 
     cv = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED)
     model_factories = make_models()
@@ -240,18 +234,6 @@ def main():
     )
     selected_scores = oof[selected]
     selected_threshold = 0.5
-    mlp_oof_path = ARTIFACTS / "mlp_oof_predictions.csv"
-    mlp_report_path = ARTIFACTS / "metrics.json"
-    if not mlp_oof_path.exists() or not mlp_report_path.exists():
-        raise FileNotFoundError("Run train.py first to create MLP OOF predictions and metrics.")
-    mlp_oof = pd.read_csv(mlp_oof_path)
-    mlp_report = json.loads(mlp_report_path.read_text())
-    mlp_threshold = float(mlp_report["threshold"])
-    mlp_probabilities = mlp_oof["oof_probability"].to_numpy(dtype=float)
-    mlp_targets = mlp_oof["target"].to_numpy(dtype=int)
-    mlp_subgroups = subgroup_report(
-        mlp_oof[["age_years", "gender"]], mlp_targets, mlp_probabilities, mlp_threshold
-    )
     result = {
         "analysis_scope": "development partition only; final holdout deliberately not evaluated in this secondary benchmark",
         "dataset_rows_after_cleaning": int(len(data)),
@@ -271,14 +253,6 @@ def main():
         "folds": FOLDS,
         "selection_rule": "highest mean cross-validation ROC-AUC; descriptive benchmark only",
         "selected_benchmark_reference": selected,
-        "deployed_mlp_oof_analysis": {
-            "metrics_at_selected_threshold": classification_metrics(
-                mlp_targets, mlp_probabilities, mlp_threshold
-            ),
-            "threshold_analysis": mlp_report.get("threshold_analysis", []),
-            "subgroup_analysis": mlp_subgroups,
-            "note": "Out-of-fold development predictions for the deployed PyTorch MLP; no final test holdout re-used.",
-        },
         "models": summary,
         "fold_results": fold_rows,
         "threshold_analysis": threshold_table(y_dev, selected_scores),
