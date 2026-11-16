@@ -11,6 +11,15 @@ on:
       - "tests/**"
       - "requirements.txt"
       - ".github/workflows/train-mlp.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "data/cardio_train.csv"
+      - "*.py"
+      - "tests/**"
+      - "requirements.txt"
+      - ".github/workflows/train-mlp.yml"
 
 permissions:
   contents: write
@@ -27,7 +36,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           persist-credentials: true
 
       - name: Set up Python
@@ -82,6 +91,7 @@ jobs:
           PY
 
       - name: Commit trained artifacts
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
