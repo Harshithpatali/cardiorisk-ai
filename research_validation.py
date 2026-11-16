@@ -237,6 +237,31 @@ def main():
     )
     selected_scores = oof[selected]
     selected_threshold = 0.5
+
+    # Audit the deployed MLP using its persisted out-of-fold development
+    # predictions. These are not the final holdout predictions.
+    mlp_oof_path = ARTIFACTS / "mlp_oof_predictions.csv"
+    mlp_metrics_path = ARTIFACTS / "metrics.json"
+    mlp_oof_analysis = None
+    if mlp_oof_path.exists() and mlp_metrics_path.exists():
+        mlp_oof = pd.read_csv(mlp_oof_path)
+        mlp_threshold = float(json.loads(mlp_metrics_path.read_text())["threshold"])
+        mlp_oof_analysis = {
+            "threshold": mlp_threshold,
+            "metrics": classification_metrics(
+                mlp_oof["target"].to_numpy(),
+                mlp_oof["oof_probability"].to_numpy(),
+                mlp_threshold,
+            ),
+            "subgroup_analysis": subgroup_report(
+                mlp_oof,
+                mlp_oof["target"].to_numpy(),
+                mlp_oof["oof_probability"].to_numpy(),
+                mlp_threshold,
+            ),
+            "scope": "deployed MLP out-of-fold development predictions only",
+        }
+
     result = {
         "analysis_scope": "development partition only; final holdout deliberately not evaluated in this secondary benchmark",
         "dataset_rows_after_cleaning": int(len(data)),
@@ -260,6 +285,7 @@ def main():
         "fold_results": fold_rows,
         "threshold_analysis": threshold_table(y_dev, selected_scores),
         "subgroup_analysis": subgroup_report(dev_frame, y_dev, selected_scores, selected_threshold),
+        "deployed_mlp_oof_analysis": mlp_oof_analysis,
         "calibration": {
             "note": "Brier score, ECE and reliability bins describe probability reliability. Sigmoid-calibrated logistic regression is an explicit benchmark; no calibrated model replaces the deployed MLP.",
             "reliability_bins": expected_calibration_error(y_dev, selected_scores)[1],
