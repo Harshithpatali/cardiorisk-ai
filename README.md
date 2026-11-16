@@ -48,6 +48,10 @@ The GitHub Actions workflow saves these files to `artifacts/`:
 - `metrics.json`
 - `training_history.csv`\n- `research_validation.json` — cross-validated model comparison, confidence intervals, calibration diagnostics and subgroup analysis\n- `benchmark_folds.csv` — fold-level benchmark results\n- `threshold_analysis.csv` — operating-point trade-offs
 
+## Research dashboard
+
+The Streamlit workspace includes held-out test metrics, fold-level validation, a recall-constrained operating-point explorer, calibration reliability bins, descriptive subgroup diagnostics, and development-only benchmark comparisons. The threshold frontier uses MLP out-of-fold development predictions and is not applied to deployed inference.
+
 ## Deploy on Streamlit Community Cloud
 
 The repository is prepared for Streamlit Community Cloud:
