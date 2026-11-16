@@ -764,8 +764,8 @@ with st.expander("How this model was evaluated"):
         "epoch selection, and threshold selection."
     )
     st.write(
-        f"Test Brier score: {metrics['brier_score']:.4f}; expected calibration error (10 bins): "
-        f"{metrics['ece_10_bins']:.4f}. These are descriptive diagnostics, not clinical calibration."
+        f"Test Brier score: {metrics.get('brier_score', float('nan')):.4f}; expected calibration error (10 bins): "
+        f"{metrics.get('ece_10_bins', float('nan')):.4f}. These are descriptive diagnostics, not clinical calibration."
     )
     st.write(
         f"High-recall threshold: {threshold:.4f}. Test specificity: {metrics['specificity']:.1%}; "
