@@ -31,7 +31,7 @@ concurrency:
 jobs:
   train:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +60,9 @@ jobs:
       - name: Train and evaluate modular pipeline
         run: python train.py
 
+      - name: Run cross-validated benchmark and statistical audit
+        run: python research_validation.py
+
       - name: Run automated tests
         run: pytest -q
 
@@ -86,7 +89,11 @@ jobs:
           assert len(metrics["cross_validation"]["folds"]) == 5
           assert "operating_points" in metrics
           assert "high_recall" in metrics["operating_points"]
-          assert (artifact_dir / "training_history.csv").stat().st_size > 0\n          research = json.loads((artifact_dir / "research_validation.json").read_text())\n          assert len(research["models"]) == 4\n          assert len(research["fold_results"]) == 20\n          assert research["selected_benchmark_reference"] in research["models"]
+          assert (artifact_dir / "training_history.csv").stat().st_size > 0
+          research = json.loads((artifact_dir / "research_validation.json").read_text())
+          assert len(research["models"]) == 4
+          assert len(research["fold_results"]) == 20
+          assert research["selected_benchmark_reference"] in research["models"]
           print(json.dumps(metrics["test"], indent=2))
           PY
 
@@ -98,7 +105,10 @@ jobs:
           git add artifacts/mlp_state_dict.pt
           git add artifacts/preprocessing.json
           git add artifacts/metrics.json
-          git add artifacts/training_history.csv\n          git add artifacts/research_validation.json\n          git add artifacts/benchmark_folds.csv\n          git add artifacts/threshold_analysis.csv
+          git add artifacts/training_history.csv
+          git add artifacts/research_validation.json
+          git add artifacts/benchmark_folds.csv
+          git add artifacts/threshold_analysis.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
