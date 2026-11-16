@@ -94,6 +94,8 @@ jobs:
           assert len(research["models"]) == 4
           assert len(research["fold_results"]) == 20
           assert research["selected_benchmark_reference"] in research["models"]
+          assert "deployed_mlp_oof_analysis" in research
+          assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
 
@@ -109,6 +111,7 @@ jobs:
           git add artifacts/research_validation.json
           git add artifacts/benchmark_folds.csv
           git add artifacts/threshold_analysis.csv
+          git add artifacts/mlp_oof_predictions.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
