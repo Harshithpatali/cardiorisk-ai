@@ -54,6 +54,9 @@ jobs:
       - name: Run cross-validated benchmark and statistical audit
         run: python research_validation.py
 
+      - name: Build development-only MLP operating-point frontier
+        run: python operating_point_analysis.py
+
       - name: Run automated tests
         run: python -m pytest -q
 
@@ -86,6 +89,9 @@ jobs:
           assert len(research["fold_results"]) == 20
           assert research["selected_benchmark_reference"] in research["models"]
           assert "deployed_mlp_oof_analysis" in research
+          frontier = json.loads((artifact_dir / "mlp_operating_point_frontier.json").read_text())
+          assert len(frontier["rows"]) == 5
+          assert (artifact_dir / "mlp_operating_point_frontier.csv").stat().st_size > 0
           assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
@@ -103,6 +109,8 @@ jobs:
           git add artifacts/benchmark_folds.csv
           git add artifacts/threshold_analysis.csv
           git add artifacts/mlp_oof_predictions.csv
+          git add artifacts/mlp_operating_point_frontier.json
+          git add artifacts/mlp_operating_point_frontier.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
