@@ -198,11 +198,13 @@ def main():
     model_factories = make_models()
     oof = {name: np.full(len(x_dev), np.nan) for name in model_factories}
     fold_rows = []
+    oof_fold = np.zeros(len(x_dev), dtype=int)
 
     for fold, (fit_idx, hold_idx) in enumerate(cv.split(x_dev, y_dev), start=1):
         x_fit = x_dev.iloc[fit_idx].reset_index(drop=True)
         x_hold = x_dev.iloc[hold_idx].reset_index(drop=True)
         y_fit, y_hold = y_dev[fit_idx], y_dev[hold_idx]
+        oof_fold[hold_idx] = fold
         config = fit_preprocessor(x_fit)
         fit_matrix = transform_frame(x_fit, config)
         hold_matrix = transform_frame(x_hold, config)
@@ -216,9 +218,11 @@ def main():
         print(f"Completed benchmark fold {fold}/{FOLDS}")
 
     summary = {}
+    oof_export = pd.DataFrame({"target": y_dev, "fold": oof_fold})
     for name, probabilities in oof.items():
         if np.isnan(probabilities).any():
             raise RuntimeError(f"Incomplete OOF predictions for {name}")
+        oof_export[f"{name}__probability"] = probabilities
         fold_metrics = [r for r in fold_rows if r["model"] == name]
         summary[name] = {
             "fold_mean_95ci": {
@@ -261,6 +265,8 @@ def main():
             ),
             "scope": "deployed MLP out-of-fold development predictions only",
         }
+
+    oof_export.to_csv(ARTIFACTS / "benchmark_oof_predictions.csv", index=False)
 
     result = {
         "analysis_scope": "development partition only; final holdout deliberately not evaluated in this secondary benchmark",
@@ -310,7 +316,7 @@ def main():
             name: values["fold_mean_95ci"]["roc_auc"]
             for name, values in summary.items()
         },
-        "artifacts": ["research_validation.json", "benchmark_folds.csv", "threshold_analysis.csv"],
+        "artifacts": ["research_validation.json", "benchmark_folds.csv", "benchmark_oof_predictions.csv", "threshold_analysis.csv"],
     }, indent=2))
 
 
