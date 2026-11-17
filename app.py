@@ -556,8 +556,8 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True,
 )
-overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab = st.tabs(
-    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark"]
+overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab, specificity_tab = st.tabs(
+    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark", "Specificity study"]
 )
 with overview_tab:
     left, right = st.columns([1.25, 1])
@@ -679,6 +679,45 @@ with benchmark_tab:
     else:
         st.info("Benchmark report is not available.")
 
+with specificity_tab:
+    st.subheader("Specificity at matched recall")
+    st.caption("Development-only five-fold OOF comparison. Each candidate gets its own threshold to meet the same recall floor; this is not a deployment setting.")
+    specificity_path = ARTIFACTS / "specificity_investigation.json"
+    if specificity_path.exists():
+        specificity_report = json.loads(specificity_path.read_text())
+        rows = specificity_report.get("candidates", [])
+        if rows:
+            chosen_floor = st.select_slider(
+                "Recall floor for comparison",
+                options=[0.85, 0.90, 0.95],
+                value=0.90,
+                format_func=lambda value: f"{value:.0%}",
+                key="specificity_recall_floor",
+            )
+            selected_rows = [row for row in rows if row["recall_floor"] == chosen_floor]
+            comparison = pd.DataFrame([{
+                "Candidate": row["candidate"].replace("_", " ").title(),
+                "Threshold": row["threshold"],
+                "Recall": row["recall"],
+                "Specificity": row["specificity"],
+                "Precision": row["precision"],
+                "PR-AUC": row["pr_auc"],
+                "ROC-AUC": row["roc_auc"],
+                "Specificity CI low": row["specificity_fold_ci95"]["ci95_low"],
+                "Specificity CI high": row["specificity_fold_ci95"]["ci95_high"],
+            } for row in selected_rows]).sort_values("Specificity", ascending=False)
+            st.dataframe(comparison.style.format({
+                column: "{:.3f}" for column in comparison.columns if column != "Candidate"
+            }), use_container_width=True, hide_index=True)
+            st.bar_chart(comparison.set_index("Candidate")[["Specificity", "Recall", "Precision"]])
+            best = comparison.iloc[0]
+            st.metric("Highest observed specificity at this recall floor",
+                      f'{best["Specificity"]:.1%}', best["Candidate"])
+            st.caption("Specificity intervals are descriptive t-intervals across five held-out folds at the pooled-OOF-selected threshold. They do not include threshold-selection uncertainty.")
+        else:
+            st.info("Specificity study has no candidate results.")
+    else:
+        st.info("Run the latest training workflow to generate the specificity investigation.")
 
 st.markdown(
     """
