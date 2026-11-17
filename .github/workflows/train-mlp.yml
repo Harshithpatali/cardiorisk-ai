@@ -54,6 +54,9 @@ jobs:
       - name: Run cross-validated benchmark and statistical audit
         run: python research_validation.py
 
+      - name: Investigate specificity at matched recall
+        run: python specificity_investigation.py
+
       - name: Run experimental MLP architecture benchmark
         run: python mlp_variant_benchmark.py
 
@@ -91,6 +94,12 @@ jobs:
           assert len(research["models"]) == 4
           assert len(research["fold_results"]) == 20
           assert research["selected_benchmark_reference"] in research["models"]
+          benchmark_oof = __import__("pandas").read_csv(artifact_dir / "benchmark_oof_predictions.csv")
+          assert len(benchmark_oof) == research["development_rows"]
+          specificity = json.loads((artifact_dir / "specificity_investigation.json").read_text())
+          assert len(specificity["candidates"]) == 18
+          assert (artifact_dir / "specificity_investigation.csv").stat().st_size > 0
+          assert (artifact_dir / "specificity_oof_predictions.csv").stat().st_size > 0
           assert "deployed_mlp_oof_analysis" in research
           frontier = json.loads((artifact_dir / "mlp_operating_point_frontier.json").read_text())
           variants = json.loads((artifact_dir / "mlp_variant_benchmark.json").read_text())
@@ -112,6 +121,10 @@ jobs:
           git add artifacts/metrics.json
           git add artifacts/training_history.csv
           git add artifacts/research_validation.json
+          git add artifacts/benchmark_oof_predictions.csv
+          git add artifacts/specificity_investigation.json
+          git add artifacts/specificity_investigation.csv
+          git add artifacts/specificity_oof_predictions.csv
           git add artifacts/benchmark_folds.csv
           git add artifacts/threshold_analysis.csv
           git add artifacts/mlp_oof_predictions.csv
