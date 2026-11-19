@@ -50,7 +50,7 @@ The GitHub Actions workflow saves these files to `artifacts/`:
 
 ## Experimental MLP variants\n\n`mlp_variant_benchmark.py` compares compact, baseline and wider MLP configurations with different dropout and positive-class loss weights using three-fold development-only out-of-fold predictions. It is an experiment, not a deployed model selection step; candidates require independent evaluation before promotion.\n\n## Research dashboard
 
-The Streamlit workspace includes held-out test metrics, fold-level validation, a recall-constrained operating-point explorer, calibration reliability bins, descriptive subgroup diagnostics, development-only benchmark comparisons, and a specificity study comparing positive-class loss weights against HistGradientBoosting at matched recall floors (85%, 90%, 95%). The specificity study uses five-fold development OOF predictions and descriptive fold intervals; it does not alter deployed inference.
+The Streamlit workspace includes held-out test metrics, fold-level validation, a recall-constrained operating-point explorer, calibration reliability bins, descriptive subgroup diagnostics, development-only benchmark comparisons, a specificity study, and a CatBoost/XGBoost study with sigmoid calibration. All new comparisons use five-fold development OOF predictions; no experimental candidate alters deployed inference. Matched-recall thresholds are exploratory because they are selected and summarized on pooled OOF scores.
 
 ## Deploy on Streamlit Community Cloud
 
@@ -78,4 +78,4 @@ Upload the original CSV to `data/cardio_train.csv`. See [data/README.md](data/RE
 
 ## Limitations
 
-The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. The secondary benchmark adds internal cross-validation intervals and descriptive subgroup diagnostics, but these do not establish fairness or generalisability. The deployed MLP score remains uncalibrated; calibration diagnostics in the benchmark are not a clinical calibration study. A negative result must never be used to rule out disease or delay professional medical care.
+The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. Internal cross-validation and subgroup diagnostics do not establish fairness or generalisability. Calibration metrics are internal research diagnostics, not a clinical calibration study. A negative result must never be used to rule out disease or delay professional medical care.
