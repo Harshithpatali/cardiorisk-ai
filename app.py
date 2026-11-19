@@ -556,8 +556,8 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True,
 )
-overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab, specificity_tab = st.tabs(
-    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark", "Specificity study"]
+overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab, specificity_tab, boosting_tab = st.tabs(
+    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark", "Specificity study", "Boosting & calibration"]
 )
 with overview_tab:
     left, right = st.columns([1.25, 1])
@@ -718,6 +718,53 @@ with specificity_tab:
             st.info("Specificity study has no candidate results.")
     else:
         st.info("Run the latest training workflow to generate the specificity investigation.")
+
+
+with boosting_tab:
+    st.subheader("CatBoost and XGBoost · calibration study")
+    st.caption("Five-fold development-only OOF comparison. Sigmoid calibrators are fitted inside each outer training fold; these candidates are not deployed.")
+    study_path = ARTIFACTS / "boosting_calibration_study.json"
+    if study_path.exists():
+        study = json.loads(study_path.read_text())
+        model_rows = [{
+            "Model": f'{item["model"].replace("_", " ").title()} · {item["probability_type"].replace("_", " ").title()}',
+            "ROC-AUC": item["roc_auc"], "PR-AUC": item["pr_auc"],
+            "Brier": item["brier_score"], "ECE": item["ece_10_bins"],
+        } for item in study.get("models", [])]
+        if model_rows:
+            frame = pd.DataFrame(model_rows)
+            st.dataframe(frame.style.format({
+                "ROC-AUC": "{:.3f}", "PR-AUC": "{:.3f}",
+                "Brier": "{:.3f}", "ECE": "{:.3f}",
+            }), use_container_width=True, hide_index=True)
+            st.markdown("#### Specificity at matched recall")
+            floors = sorted({row["recall_floor"] for row in study.get("operating_points", [])}, reverse=True)
+            if floors:
+                floor = st.select_slider(
+                    "Minimum recall target", options=floors, value=0.90,
+                    format_func=lambda value: f"{value:.0%}",
+                    key="boosting_recall_floor",
+                )
+                selected = [row for row in study["operating_points"] if row["recall_floor"] == floor]
+                comparison = pd.DataFrame([{
+                    "Model": f'{row["model"].replace("_", " ").title()} · {row["probability_type"].replace("_", " ").title()}',
+                    "Recall": row["recall"], "Specificity": row["specificity"],
+                    "Precision": row["precision"], "Threshold": row["threshold"],
+                    "Brier": next((m["brier_score"] for m in study["models"]
+                        if m["model"] == row["model"] and m["probability_type"] == row["probability_type"]), None),
+                    "ECE": next((m["ece_10_bins"] for m in study["models"]
+                        if m["model"] == row["model"] and m["probability_type"] == row["probability_type"]), None),
+                } for row in selected]).sort_values("Specificity", ascending=False)
+                st.dataframe(comparison.style.format({
+                    c: "{:.3f}" for c in comparison.columns if c != "Model"
+                }), use_container_width=True, hide_index=True)
+                st.bar_chart(comparison.set_index("Model")[["Specificity", "Recall", "Precision"]])
+            st.caption("Brier score and ECE summarize probability reliability. Lower is better, but neither establishes clinical calibration.")
+        else:
+            st.info("The boosting study contains no model summaries.")
+    else:
+        st.info("The CatBoost/XGBoost study will appear after the research workflow completes.")
+    st.warning("All results are exploratory development OOF estimates. Pooled-OOF threshold selection is optimistic; independent confirmation is required. The deployed PyTorch MLP remains unchanged.")
 
 st.markdown(
     """
