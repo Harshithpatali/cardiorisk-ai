@@ -117,10 +117,10 @@ def main():
     mlp = pd.read_csv(mlp_path)
     if len(mlp) != len(y) or not np.array_equal(mlp["target"].to_numpy(), y):
         raise RuntimeError("MLP OOF rows do not align with this development split")
-    if not np.array_equal(mlp["fold"].to_numpy(), np.concatenate([
-        np.full(len(hold), fold, dtype=int)
-        for fold, (_, hold) in enumerate(splitter.split(x, y), start=1)
-    ])):
+    expected_fold_ids = np.zeros(len(y), dtype=int)
+    for fold, (_, hold_idx) in enumerate(splitter.split(x, y), start=1):
+        expected_fold_ids[hold_idx] = fold
+    if not np.array_equal(mlp["fold"].to_numpy(), expected_fold_ids):
         raise RuntimeError("MLP OOF fold assignments do not match this experiment")
     score_store["mlp_reference"] = {
         "uncalibrated": mlp["mlp_positive_weight_1.00__probability"].to_numpy(dtype=float)
