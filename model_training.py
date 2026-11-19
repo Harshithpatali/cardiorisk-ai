@@ -44,6 +44,20 @@ def _loss_function(target, positive_weight_multiplier=1.3):
     return torch.nn.BCEWithLogitsLoss(pos_weight=weight)
 
 
+def _make_optimizer(name, parameters, learning_rate, weight_decay):
+    key = name.lower()
+    if key == "adamw":
+        return torch.optim.AdamW(parameters, lr=learning_rate, weight_decay=weight_decay)
+    if key == "adam":
+        return torch.optim.Adam(parameters, lr=learning_rate, weight_decay=weight_decay)
+    if key == "sgd":
+        return torch.optim.SGD(
+            parameters, lr=learning_rate, momentum=0.9,
+            nesterov=True, weight_decay=weight_decay,
+        )
+    raise ValueError(f"Unsupported optimizer: {name}")
+
+
 def train_with_early_stopping(
     x_train,
     y_train,
@@ -57,15 +71,9 @@ def train_with_early_stopping(
     seed_everything(seed)
     model = CardioMLP(x_train.shape[1])
     criterion = _loss_function(y_train)
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=1e-3,
-        weight_decay=1e-4,
-    )
+    optimizer = _make_optimizer("adamw", model.parameters(), 1e-3, 1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        patience=3,
-        factor=0.5,
+        optimizer, patience=3, factor=0.5,
     )
     train_data, train_loader = _loader(x_train, y_train, batch_size, seed)
     valid_data = TensorDataset(
@@ -123,16 +131,15 @@ def train_with_early_stopping(
 def train_fixed_epochs(
     features, target, epochs, seed, batch_size, dropout=0.3,
     hidden_dims=(128, 64, 32), positive_weight_multiplier=1.3,
+    optimizer_name="adamw", learning_rate=1e-3, weight_decay=1e-4,
 ):
     seed_everything(seed)
     model = CardioMLP(
         features.shape[1], dropout=dropout, hidden_dims=hidden_dims
     )
     criterion = _loss_function(target, positive_weight_multiplier)
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=1e-3,
-        weight_decay=1e-4,
+    optimizer = _make_optimizer(
+        optimizer_name, model.parameters(), learning_rate, weight_decay
     )
     _, loader = _loader(features, target, batch_size, seed)
     for _ in range(epochs):
