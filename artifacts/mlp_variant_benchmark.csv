@@ -1,4 +1,4 @@
 variant,hidden_dims,dropout,positive_weight_multiplier,epochs,oof_roc_auc,oof_pr_auc,scope
-baseline_128_64_32_pw1.3,"[128, 64, 32]",0.3,1.3,16,0.7995538229784299,0.7807266606354759,three-fold development-only OOF experiment
-compact_64_32_pw1.0,"[64, 32]",0.2,1.0,16,0.7994891110151868,0.779995958964752,three-fold development-only OOF experiment
-wide_256_128_64_pw1.0,"[256, 128, 64]",0.4,1.0,16,0.799727246574232,0.7806397755881562,three-fold development-only OOF experiment
+baseline_128_64_32_pw1.3,"[128, 64, 32]",0.3,1.3,17,0.8001034151385567,0.7810986148571448,three-fold development-only OOF experiment
+compact_64_32_pw1.0,"[64, 32]",0.2,1.0,17,0.7998400158706358,0.780057894758515,three-fold development-only OOF experiment
+wide_256_128_64_pw1.0,"[256, 128, 64]",0.4,1.0,17,0.7998805426687995,0.7798673845919241,three-fold development-only OOF experiment
