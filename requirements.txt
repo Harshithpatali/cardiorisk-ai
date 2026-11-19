@@ -5,3 +5,5 @@ torch>=2.2
 streamlit>=1.32
 pytest>=8.0
 scipy>=1.10
+catboost>=1.2,<2
+xgboost>=2.0,<4
