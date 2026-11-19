@@ -63,6 +63,9 @@ jobs:
       - name: Run experimental MLP architecture benchmark
         run: python mlp_variant_benchmark.py
 
+      - name: Run recall-focused MLP optimizer and feature study
+        run: python mlp_recall_study.py
+
       - name: Build development-only MLP operating-point frontier
         run: python operating_point_analysis.py
 
@@ -117,6 +120,12 @@ jobs:
           assert (artifact_dir / "mlp_variant_benchmark.csv").stat().st_size > 0
           assert len(frontier["rows"]) == 5
           assert (artifact_dir / "mlp_operating_point_frontier.csv").stat().st_size > 0
+          recall_study = json.loads((artifact_dir / "mlp_recall_study.json").read_text())
+          assert len(recall_study["experiments"]) == 7
+          assert len(recall_study["fold_results"]) == 21
+          assert len(recall_study["recall_floors"]) == 3
+          assert (artifact_dir / "mlp_recall_study_folds.csv").stat().st_size > 0
+          assert (artifact_dir / "mlp_recall_study_oof.csv").stat().st_size > 0
           assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
@@ -146,6 +155,9 @@ jobs:
           git add artifacts/mlp_operating_point_frontier.csv
           git add artifacts/mlp_variant_benchmark.json
           git add artifacts/mlp_variant_benchmark.csv
+          git add artifacts/mlp_recall_study.json
+          git add artifacts/mlp_recall_study_folds.csv
+          git add artifacts/mlp_recall_study_oof.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
