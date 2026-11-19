@@ -7,6 +7,11 @@ CATEGORICAL_COLUMNS = ["gender", "cholesterol", "gluc"]
 BINARY_COLUMNS = ["smoke", "alco", "active"]
 FEATURE_COLUMNS = NUMERIC_COLUMNS + CATEGORICAL_COLUMNS + BINARY_COLUMNS
 
+RESEARCH_NUMERIC_COLUMNS = [
+    "age_squared", "bmi_squared", "age_bmi_interaction",
+    "age_systolic_interaction", "pulse_pressure_ratio", "systolic_map_ratio",
+]
+
 
 def clean_dataset(path):
     """Apply row-wise validity rules and deterministic feature engineering only."""
@@ -45,12 +50,30 @@ def clean_dataset(path):
     return cleaned.reset_index(drop=True)
 
 
-def fit_preprocessor(frame):
+def add_research_features(frame):
+    """Add deterministic nonlinear/interaction features for experiments only."""
+    result = frame.copy()
+    age = result["age_years"].astype(float)
+    bmi = result["bmi"].astype(float)
+    systolic = result["ap_hi"].astype(float)
+    map_value = result["map"].astype(float)
+    result["age_squared"] = age ** 2
+    result["bmi_squared"] = bmi ** 2
+    result["age_bmi_interaction"] = age * bmi
+    result["age_systolic_interaction"] = age * systolic
+    result["pulse_pressure_ratio"] = result["pulse_pressure"] / result["ap_lo"].clip(lower=1)
+    result["systolic_map_ratio"] = systolic / map_value.clip(lower=1)
+    return result
+
+
+def fit_preprocessor(frame, extra_numeric_columns=()):
     """Fit all learned preprocessing statistics on the supplied training rows."""
     from sklearn.impute import SimpleImputer
     from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-    numeric = frame[NUMERIC_COLUMNS].to_numpy(dtype=np.float64)
+    numeric_columns = NUMERIC_COLUMNS + list(extra_numeric_columns)
+    feature_columns = numeric_columns + CATEGORICAL_COLUMNS + BINARY_COLUMNS
+    numeric = frame[numeric_columns].to_numpy(dtype=np.float64)
     numeric_imputer = SimpleImputer(strategy="median")
     numeric_imputed = numeric_imputer.fit_transform(numeric)
     scaler = StandardScaler()
@@ -79,12 +102,12 @@ def fit_preprocessor(frame):
             for cats in encoder.categories_
         ],
         "binary_imputer_statistics": binary_imputer.statistics_.tolist(),
-        "numeric_columns": NUMERIC_COLUMNS,
+        "numeric_columns": numeric_columns,
         "categorical_columns": CATEGORICAL_COLUMNS,
         "binary_columns": BINARY_COLUMNS,
-        "feature_columns": FEATURE_COLUMNS,
+        "feature_columns": feature_columns,
         "input_dim": int(
-            len(NUMERIC_COLUMNS)
+            len(numeric_columns)
             + sum(len(cats) for cats in encoder.categories_)
             + len(BINARY_COLUMNS)
         ),
