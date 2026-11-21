@@ -92,3 +92,8 @@ The Bayesian interval is conditional on the sampled dataset and selected thresho
 ## Limitations
 
 The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. Internal cross-validation and subgroup diagnostics do not establish fairness or generalisability. Calibration metrics are internal research diagnostics, not a clinical calibration study. A negative result must never be used to rule out disease or delay professional medical care.
+
+
+## Matched-recall cascade audit
+
+The cascade run also selects a single-stage MLP threshold using development OOF scores to meet each cascade's achieved OOF recall, then compares both frozen classifiers on the same untouched test rows. It reports test precision, recall, specificity, F1 and false-positive/false-negative counts, plus 2,000 paired test-row bootstrap intervals for cascade-minus-baseline metric differences. The intervals are conditional on the fitted models and OOF-selected thresholds; they do not capture training or threshold-selection uncertainty. This is a research comparison only and does not promote the cascade into the deployed app.
