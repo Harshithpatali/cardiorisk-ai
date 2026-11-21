@@ -21,12 +21,13 @@ from data_split import split_holdout
 from evaluation import evaluate_predictions
 from model_training import predict_probabilities, train_fixed_epochs
 from preprocessing import FEATURE_COLUMNS, clean_dataset, fit_preprocessor, transform_frame
-from bayesian_mlp_cascade import RECALL_FLOORS, paired_bootstrap_differences, select_recall_threshold
+from bayesian_mlp_cascade import paired_bootstrap_differences, select_recall_threshold
 
 FOLDS = 5
 GATE_RECALL = 0.995
 ROUTE_CEILING = 0.50
 BOOTSTRAPS = 2000
+TREE_RECALL_FLOORS = (0.95, 0.97, 0.98, 0.99, 0.995)
 
 
 def make_estimator(name, seed):
@@ -185,7 +186,7 @@ def run():
         s2_test = final.predict_proba(test_x)[:, 1] if len(test_x) else np.array([])
         stage2_oof_full = np.zeros(len(y_dev), dtype=float)
         stage2_oof_full[dev_route] = s2_oof
-        for ti, floor in enumerate(RECALL_FLOORS):
+        for ti, floor in enumerate(TREE_RECALL_FLOORS):
             choice = choose_cascade_threshold(y_dev, p1_dev,
                 stage2_oof_full, gate, floor)
             # Build the end-to-end Stage-2 score vector. Direct positives bypass Stage 2.
@@ -232,7 +233,7 @@ def run():
         "routing": "Below gate: negative; gate <= confidence < 0.50: Stage 2; confidence >= 0.50: direct positive bypass.",
         "stage2": "XGBoost and LightGBM trained only on Stage-1 OOF borderline development rows; each outer fold uses sigmoid calibration fitted inside that fold.",
         "dataset_artifact": "stage1_prediction_dataset.csv contains original features, actual labels, Stage-1 prediction/confidence, split and route. Only development OOF borderline rows are Stage-2 training eligible.",
-        "threshold_selection": "Beta(1,1) posterior precision lower 95% bound subject to end-to-end OOF recall floors of 95%, 97%, and 98%.",
+        "threshold_selection": "Beta(1,1) posterior precision lower 95% bound subject to end-to-end OOF recall floors of 95%, 97%, 98%, 99%, and 99.5%.",
         "comparison": "Single-stage MLP matched to cascade OOF recall; both evaluated on identical untouched test rows.",
         "bootstrap": "2,000 paired test-row bootstrap resamples; conditional on fitted models and selected thresholds.",
         "models": models,
