@@ -104,9 +104,29 @@ def run():
         raise FileNotFoundError("Run train.py first to create MLP artifacts.")
     baseline = json.loads(baseline_path.read_text())
     baseline_oof = pd.read_csv(oof_path)
+    raw = pd.read_csv(DATA_PATH, sep=";")
+    raw_bmi = raw["weight"] / ((raw["height"] / 100.0) ** 2)
+    raw_pulse = raw["ap_hi"] - raw["ap_lo"]
+    raw_keep = (
+        raw["cardio"].notna()
+        & raw["cardio"].isin([0, 1])
+        & raw["ap_hi"].between(70, 250)
+        & raw["ap_lo"].between(40, 180)
+        & (raw["ap_hi"] > raw["ap_lo"])
+        & raw["height"].between(120, 220)
+        & raw["weight"].between(35, 200)
+        & raw_bmi.between(12, 60)
+    )
+    raw_kept = raw.loc[raw_keep, ["id", "age"]].reset_index(drop=True)
     data = clean_dataset(DATA_PATH)
+    if len(raw_kept) != len(data):
+        raise RuntimeError("Raw-to-cleaned row alignment failed; refusing to write a misleading Stage-1 ledger.")
     x, y = data[FEATURE_COLUMNS].reset_index(drop=True), data["cardio"].astype(int).to_numpy()
+    ledger_x = pd.concat([raw_kept, x], axis=1)
     x_dev, x_test, y_dev, y_test = split_holdout(x, y, TEST_SIZE, RANDOM_SEED)
+    ledger_dev, ledger_test, ledger_y_dev, ledger_y_test = split_holdout(ledger_x, y, TEST_SIZE, RANDOM_SEED)
+    if not np.array_equal(ledger_y_dev, y_dev) or not np.array_equal(ledger_y_test, y_test):
+        raise RuntimeError("Ledger split does not match model split.")
     if len(baseline_oof) != len(y_dev) or not np.array_equal(baseline_oof["target"].to_numpy(dtype=int), y_dev):
         raise RuntimeError("MLP OOF predictions do not match deterministic development split.")
 
@@ -128,14 +148,14 @@ def run():
 
     # Persist every original feature and its actual/OOF-or-holdout prediction.
     # Only development OOF borderline rows are eligible for Stage-2 fitting.
-    dev_snapshot = x_dev.copy()
+    dev_snapshot = ledger_dev.copy()
     dev_snapshot["actual"] = y_dev
     dev_snapshot["stage1_prediction"] = (p1_dev >= gate).astype(int)
     dev_snapshot["stage1_positive_confidence"] = p1_dev
     dev_snapshot["stage1_split"] = "development_oof"
     dev_snapshot["stage1_route"] = np.where(dev_direct, "direct_positive",
         np.where(dev_route, "stage2_borderline", "stage1_negative"))
-    test_snapshot = x_test.copy()
+    test_snapshot = ledger_test.copy()
     test_snapshot["actual"] = y_test
     test_snapshot["stage1_prediction"] = (p1_test >= gate).astype(int)
     test_snapshot["stage1_positive_confidence"] = p1_test
