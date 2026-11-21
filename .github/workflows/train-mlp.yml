@@ -94,6 +94,8 @@ jobs:
           weights = torch.load(artifact_dir / "mlp_state_dict.pt", map_location="cpu", weights_only=True)
           model.load_state_dict(weights)
           assert metrics["default_operating_point"] == "high_recall"
+          assert metrics["threshold_selection"]["minimum_precision"] == 0.50
+          assert metrics["threshold_selection"]["method"] == "OOF maximum recall subject to OOF precision constraint"
           assert "cross_validation" in metrics and len(metrics["cross_validation"]["folds"]) == 5
           assert "operating_points" in metrics and "high_recall" in metrics["operating_points"]
           assert (artifact_dir / "training_history.csv").stat().st_size > 0
