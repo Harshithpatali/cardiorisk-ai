@@ -480,7 +480,7 @@ st.markdown(
     <div class="hero">
         <div class="hero-kicker">Intelligent health data · Research studio</div>
         <h1>Understand the<br>signals in your data.</h1>
-        <p>A neural-network research interface for exploring cardiovascular dataset patterns.
+        <p>A high-recall neural-network interface for exploring cardiovascular dataset patterns, with a separate two-tier verification research study.
         Enter an observation, run the model, and inspect its output in seconds.</p>
         <div class="hero-foot">
             <span class="hero-tag">PyTorch MLP · 128 / 64 / 32</span>
@@ -545,8 +545,14 @@ def load_operating_frontier():
     path = ARTIFACTS / "mlp_operating_point_frontier.json"
     return json.loads(path.read_text()) if path.exists() else {"rows": []}
 
+@st.cache_data
+def load_tree_cascade_report():
+    path = ARTIFACTS / "tree_stage2_cascade_comparison.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
 research_report = load_research_report()
 frontier_report = load_operating_frontier()
+tree_cascade_report = load_tree_cascade_report()
 st.markdown(
     """
     <div class="section-head">
@@ -556,9 +562,127 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True,
 )
-overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab, specificity_tab, boosting_tab = st.tabs(
-    ["Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark", "Specificity study", "Boosting & calibration"]
+cascade_tab, overview_tab, threshold_tab, calibration_tab, subgroup_tab, benchmark_tab, specificity_tab, boosting_tab = st.tabs(
+    ["Two-tier study", "Overview", "Threshold lab", "Calibration", "Subgroups", "Benchmark", "Specificity study", "Boosting & calibration"]
 )
+
+with cascade_tab:
+    st.subheader("High-recall MLP + selective tree verification")
+    st.caption("Research comparison only. The live single-observation form below still uses the deployed PyTorch MLP alone.")
+    if tree_cascade_report and tree_cascade_report.get("models"):
+        st.warning(
+            "False negatives are treated as the more costly error in this research design. "
+            "A Stage-2 candidate is not preferred merely because precision rises: check that "
+            "its untouched-test false-negative count does not increase."
+        )
+        gate = float(tree_cascade_report.get("stage1_gate_threshold", float("nan")))
+        gate_recall = float(tree_cascade_report.get("stage1_gate_oof_recall", float("nan")))
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Stage-1 gate", f"{gate:.4f}")
+        m2.metric("Stage-1 OOF recall", f"{gate_recall:.2%}")
+        m3.metric("Borderline development rows", f'{tree_cascade_report["models"][0]["stage2_development_rows"]:,}')
+        st.markdown("#### How the two tiers route an observation")
+        route_a, route_b, route_c = st.columns(3)
+        route_a.info(f"**1 · MLP screen**\n\nBelow {gate:.4f}: Stage-1 negative. The second model cannot recover this case.")
+        route_b.warning(f"**2 · Borderline band**\n\nFrom {gate:.4f} to below 0.50: send the row to XGBoost or LightGBM.")
+        route_c.success("**3 · Direct positive**\n\nAt or above 0.50: bypass Stage 2 and retain the positive classification.")
+        st.markdown(
+            "For routed rows, Stage 2 returns a calibrated model score. The final positive rule is "
+            "**direct Stage-1 positive OR (borderline AND Stage-2 score above its development-selected threshold)**. "
+            "The score is not a literal individual precision or a clinically validated probability."
+        )
+        target_values = sorted({
+            float(row["recall_target"])
+            for model_result in tree_cascade_report["models"]
+            for row in model_result.get("recall_target_results", [])
+        })
+        preferred = 0.995 if 0.995 in target_values else max(target_values)
+        target = st.select_slider(
+            "Development OOF end-to-end recall constraint",
+            options=target_values,
+            value=preferred,
+            format_func=lambda value: f"{value:.1%}",
+            key="tree_cascade_recall_target",
+        )
+        by_model = {item["model"]: item for item in tree_cascade_report["models"]}
+        def get_result(model_name):
+            return next(row for row in by_model[model_name]["recall_target_results"]
+                        if float(row["recall_target"]) == float(target))
+        light = get_result("lightgbm")
+        xgb = get_result("xgboost")
+        baseline = {
+            "model": "Single-stage MLP",
+            "precision": light["baseline_test_precision"],
+            "recall": light["baseline_test_recall"],
+            "specificity": light["baseline_test_specificity"],
+            "f1": light["baseline_test_f1"],
+            "fp": light["baseline_test_false_positives"],
+            "fn": light["baseline_test_false_negatives"],
+            "threshold": None,
+        }
+        comparison_rows = [baseline]
+        for name, row in [("XGBoost cascade", xgb), ("LightGBM cascade", light)]:
+            comparison_rows.append({
+                "model": name,
+                "precision": row["cascade_test_precision"],
+                "recall": row["cascade_test_recall"],
+                "specificity": row["cascade_test_specificity"],
+                "f1": row["cascade_test_f1"],
+                "fp": row["cascade_test_false_positives"],
+                "fn": row["cascade_test_false_negatives"],
+                "threshold": row["stage2_threshold"],
+            })
+        compare = pd.DataFrame(comparison_rows)
+        st.markdown("#### Untouched-test comparison")
+        st.caption("All rows use the same held-out test observations. The baseline is matched to each cascade's development OOF recall.")
+        st.dataframe(
+            compare.style.format({
+                "precision": "{:.2%}", "recall": "{:.2%}",
+                "specificity": "{:.2%}", "f1": "{:.3f}",
+                "fp": "{:,}", "fn": "{:,}", "threshold": lambda value: "—" if pd.isna(value) else f"{value:.4f}",
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.markdown("#### Performance profile")
+        st.bar_chart(compare.set_index("model")[["recall", "precision", "specificity"]])
+        st.markdown("#### Error counts — false negatives deserve priority")
+        st.bar_chart(compare.set_index("model")[["fp", "fn"]])
+        baseline_fn = int(baseline["fn"])
+        for label, row in [("XGBoost", xgb), ("LightGBM", light)]:
+            delta_fn = int(row["cascade_test_false_negatives"]) - baseline_fn
+            delta_fp = int(row["cascade_test_false_positives"]) - int(baseline["fp"])
+            if delta_fn > 0:
+                st.error(f"{label}: {delta_fn:,} additional false negatives and {abs(delta_fp):,} fewer false positives than the matched MLP. This is not an acceptable trade-off under a false-negative-first policy.")
+            elif delta_fn == 0 and delta_fp < 0:
+                st.success(f"{label}: same false-negative count as the matched MLP and {abs(delta_fp):,} fewer false positives on this test set.")
+            elif delta_fn < 0:
+                st.success(f"{label}: {abs(delta_fn):,} fewer false negatives than the matched MLP.")
+            else:
+                st.info(f"{label}: no false-negative improvement; false-positive change = {delta_fp:+,}.")
+        st.markdown("#### Interpretation")
+        st.write(
+            f"At the {target:.1%} development constraint, the LightGBM cascade has "
+            f"{int(light['cascade_test_false_negatives']):,} false negatives versus "
+            f"{int(light['baseline_test_false_negatives']):,} for the matched MLP, and "
+            f"{int(light['cascade_test_false_positives']):,} false positives versus "
+            f"{int(light['baseline_test_false_positives']):,}. The untouched test result is "
+            "descriptive; it must not be used to retune thresholds."
+        )
+        st.info(
+            "Conservative reading: the 99.5% operating point is the most appropriate comparison "
+            "for this project's stated error preference. In the current test results, LightGBM "
+            "matches the MLP's 12 false negatives and removes only 5 false positives. That is "
+            "a very small gain, not evidence to replace the deployed MLP."
+        )
+        st.caption(
+            "Development OOF threshold selection; one untouched test evaluation; 2,000 paired "
+            "bootstrap resamples. Bootstrap intervals are conditional on fitted models and "
+            "selected thresholds and do not include training/selection uncertainty."
+        )
+    else:
+        st.info("The two-tier comparison report is not available. Run the GitHub Actions training workflow.")
+
 with overview_tab:
     left, right = st.columns([1.25, 1])
     with left:
@@ -898,7 +1022,7 @@ if submitted:
 
         st.info(
             "This score is uncalibrated and is not a disease probability. "
-            "A negative class prediction cannot rule out disease or replace medical advice."
+            "A negative class prediction cannot rule out disease or replace medical advice. False negatives are especially important in this research context; never use this output to delay professional evaluation."
         )
 
         st.markdown(
@@ -986,6 +1110,11 @@ if submitted:
             st.warning("The prediction is available, but its feature explanation could not be generated.")
             st.caption(str(exc))
 
+
+st.caption(
+    "Live prediction path: deployed PyTorch MLP only. The XGBoost/LightGBM second-stage "
+    "models are research comparisons and are not called by this form."
+)
 
 with st.expander("How this model was evaluated"):
     st.write(
