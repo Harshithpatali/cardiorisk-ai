@@ -245,10 +245,14 @@ def run():
             flat_rows.append({k:v for k,v in row.items() if k != "paired_bootstrap_differences"})
         models.append(result)
 
+    stage1_gate_test_recall = float(np.mean(p1_test[y_test == 1] >= gate))
+    stage1_gate_test_false_negatives = int(np.sum((p1_test < gate) & (y_test == 1)))
     report = {"experiment": "High-recall MLP with selective borderline XGBoost/LightGBM verification",
         "status": "research_only_not_promoted_to_deployed_inference",
         "test_rows": int(len(y_test)), "stage1_gate_threshold": float(gate),
         "stage1_route_ceiling": ROUTE_CEILING, "stage1_gate_oof_recall": float(gate_recall),
+        "stage1_gate_test_recall": stage1_gate_test_recall,
+        "stage1_gate_test_false_negatives": stage1_gate_test_false_negatives,
         "stage1": "Existing PyTorch MLP unchanged. OOF development predictions determine high-recall gate.",
         "routing": "Below gate: negative; gate <= confidence < 0.50: Stage 2; confidence >= 0.50: direct positive bypass.",
         "stage2": "XGBoost and LightGBM trained only on Stage-1 OOF borderline development rows; each outer fold uses sigmoid calibration fitted inside that fold.",
