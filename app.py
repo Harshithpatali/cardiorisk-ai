@@ -857,8 +857,8 @@ with specificity_tab:
                 "Recall": row["recall"],
                 "Specificity": row["specificity"],
                 "Precision": row["precision"],
-                "PR-AUC": row["pr_auc"],
-                "ROC-AUC": row["roc_auc"],
+                "PR-AUC": row.get("pr_auc"),
+                "ROC-AUC": row.get("roc_auc"),
                 "Specificity CI low": row["specificity_fold_ci95"]["ci95_low"],
                 "Specificity CI high": row["specificity_fold_ci95"]["ci95_high"],
             } for row in selected_rows]).sort_values("Specificity", ascending=False)
@@ -932,7 +932,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.caption(
+    "To test a new observation, edit the values in the form below and press "
+    "**Run cardiovascular data analysis**. Each submission runs the deployed "
+    "single-stage MLP; the experimental XGBoost/LightGBM cascade is currently "
+    "shown as an evaluation study and is not used for individual predictions."
+)
 with st.form("cardio_observation_form"):
+    st.caption("Example starting point: age 55 · height 165 cm · weight 75 kg · blood pressure 120/80.")
     first_column, second_column, third_column = st.columns(3)
 
     with first_column:
