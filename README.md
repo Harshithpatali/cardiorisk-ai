@@ -6,62 +6,38 @@ A Streamlit research application powered in deployed inference by one model: a P
 
 ## Modular project structure
 
-Each pipeline responsibility has its own Python module. `train.py` only orchestrates the stages.
-
-| Module | Responsibility |
-|---|---|
-| `config.py` | Shared paths and reproducible settings |
-| `validate_data.py` | Validate source file, schema, target and row count |
-| `preprocessing.py` | Deterministic feature engineering and fold-fitted transforms |
-| `data_split.py` | Create the untouched stratified test split |
-| `cross_validation.py` | Generate five-fold out-of-fold predictions |
-| `model_training.py` | Train, early-stop, refit and predict with the MLP |
-| `threshold_selection.py` | Select threshold from OOF predictions |
-| `evaluation.py` | Calculate classification metrics |
-| `save_artifacts.py` | Save weights, preprocessing, metrics and training history |
-| `train.py` | Run the complete pipeline in order |
-| `app.py` | Streamlit inference interface |
-
-This is a modular single-process pipeline, not a set of separately deployed network services.
+Each pipeline responsibility has its own Python module. `train.py` orchestrates the baseline pipeline. The research cascade is isolated in `tree_stage2_cascade.py`.
 
 ## Leakage-safe evaluation
 
-1. Validate the original semicolon-separated CSV at `data/cardio_train.csv`.
-2. Apply deterministic row-level cleaning and feature engineering.
-3. Split into stratified 80% development and 20% test partitions before cross-validation.
-4. Run five-fold StratifiedKFold only on the development partition.
-5. Fit imputation, one-hot encoding and scaling separately inside each fold.
-6. Generate one out-of-fold prediction for each development row.
-7. Select the high-recall threshold from OOF predictions subject to OOF precision >= 0.55.
-8. Use inner validation in each fold for early stopping and the median selected epoch count for final refitting.
-9. Fit final preprocessing on all development rows and train a fresh MLP.
-10. Evaluate the frozen pipeline once on the untouched test partition.
+1. Validate and clean the original dataset.
+2. Create a stratified development/test split before cross-validation.
+3. Fit preprocessing inside each fold and generate development OOF MLP probabilities.
+4. Select a high-recall Stage-1 gate from OOF predictions.
+5. Fit the final Stage-1 MLP on development data and evaluate it on untouched test data.
+6. Do not use in-sample Stage-1 predictions to train Stage 2.
 
-## Experiments and artifacts
+## Two-stage selective verification experiment
 
-GitHub Actions runs the baseline MLP pipeline, statistical audits, specificity and calibration studies, and the experimental cascade comparisons. Generated outputs are committed under `artifacts/`.
+Stage 1 is the existing PyTorch MLP and remains the deployed model. Its OOF development probabilities determine a gate selected for 99.5% development recall.
 
-- `research_validation.json`, `benchmark_oof_predictions.csv`, `benchmark_folds.csv`: cross-validated model comparison and diagnostics.
-- `specificity_investigation.*`: class-weight and tree comparisons at matched recall.
-- `boosting_calibration_study.*`: CatBoost/XGBoost calibration study.
-- `mlp_variant_benchmark.*`, `mlp_recall_study.*`, `mlp_operating_point_frontier.*`: MLP architecture, optimizer and threshold experiments.
-- `mlp_bayesian_cascade.*`, `mlp_matched_recall_audit.*`: original MLP-to-MLP cascade and paired matched-recall audit.
-- `tree_stage2_cascade_comparison.json/.csv`, `tree_stage2_cascade_folds.csv`: XGBoost versus LightGBM as the second-stage filter behind the unchanged MLP gate.
+- Below the gate: Stage-1 negative; no Stage 2.
+- Gate through below 0.50: borderline positive; route to Stage 2.
+- At least 0.50: direct positive; bypass Stage 2.
 
-## XGBoost vs LightGBM second-stage experiment
+The experiment saves `artifacts/stage1_prediction_dataset.csv`: every original feature plus actual label, Stage-1 prediction, positive-class confidence, data split, routing decision and Stage-2 training eligibility. Development rows use OOF predictions; test rows use predictions from the final refit MLP. **Only development OOF borderline rows are eligible for Stage-2 training.** Test rows are never used for training or threshold selection.
 
-`tree_stage2_cascade.py` compares both gradient-boosted tree classifiers as Stage 2. Stage 1 remains the existing PyTorch MLP and its gate is selected on development OOF predictions for 99.5% recall. Each tree model is trained on Stage-1-positive development rows, produces five-fold cross-fitted Stage-2 scores, and gets a Bayesian Beta-Binomial threshold selected to satisfy 95%, 97%, or 98% end-to-end OOF recall. The corresponding single-stage MLP threshold is calibrated to the same achieved OOF recall. Both systems are then compared on the same untouched test rows with 2,000 paired bootstrap resamples.
+XGBoost and LightGBM are compared as Stage 2. Each is trained only on the borderline development population, using five outer folds and sigmoid calibration within each fold. Stage-2 thresholds are selected from development OOF predictions to satisfy end-to-end recall floors of 95%, 97%, and 98%. A score is an estimated positive-class probability, not a guarantee that the individual is positive or that population precision equals that score. Calibration is assessed on the routed test subset.
 
-This experiment tests whether tree models are better second-pass filters than a second MLP. The posterior and bootstrap intervals are conditional on the selected thresholds and fitted models; they do not include model-training or threshold-selection uncertainty. Results are exploratory and do not establish clinical validity. **Neither tree cascade is automatically promoted into Streamlit inference.**
+The cascade's final positive rule is: Stage-1 confidence >= 0.50 OR (Stage-1 confidence in the borderline band AND Stage-2 score >= selected threshold). Cases below the Stage-1 gate cannot be recovered by Stage 2, so gate recall and total cascade false negatives are reported explicitly.
 
-## Deploy on Streamlit Community Cloud
+Artifacts:
+- `tree_stage2_cascade_comparison.json/.csv`: XGBoost vs LightGBM and end-to-end test metrics.
+- `tree_stage2_cascade_folds.csv`: outer fold counts.
+- `stage1_prediction_dataset.csv`: complete Stage-1 prediction ledger with original features, labels, confidence, split and routing.
+- `mlp_bayesian_cascade.*`, `mlp_matched_recall_audit.*`: earlier MLP-to-MLP research.
 
-1. Open https://share.streamlit.io/ and sign in with GitHub.
-2. Select **New app**.
-3. Choose repository `Harshithpatali/cardiorisk-ai`, branch `main`, and main file path `app.py`.
-4. Choose Python 3.11 and deploy. The app loads the committed MLP model and preprocessing artifacts from `artifacts/`.
-
-The deployed inference path remains the single-stage MLP. Do not remove its committed artifacts.
+Neither candidate is promoted to Streamlit inference automatically. The deployed MLP and Render/Streamlit configuration remain unchanged. The dataset is cross-sectional and no result establishes clinical validity.
 
 ## Run locally
 
@@ -74,8 +50,4 @@ pytest -q
 streamlit run app.py
 ```
 
-Upload the original CSV to `data/cardio_train.csv`. See [data/README.md](data/README.md) for the required schema.
-
-## Limitations
-
-The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. Internal cross-validation and subgroup diagnostics do not establish fairness or generalisability. A negative result must never be used to rule out disease or delay professional medical care.
+See [data/README.md](data/README.md) for the source schema.

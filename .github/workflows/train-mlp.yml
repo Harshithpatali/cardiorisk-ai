@@ -134,8 +134,12 @@ jobs:
           assert tree["status"] == "research_only_not_promoted_to_deployed_inference"
           assert {m["model"] for m in tree["models"]} == {"xgboost", "lightgbm"}
           assert all(len(m["recall_target_results"]) == 3 for m in tree["models"])
-          for name in ["tree_stage2_cascade_comparison.csv", "tree_stage2_cascade_folds.csv"]:
+          for name in ["tree_stage2_cascade_comparison.csv", "tree_stage2_cascade_folds.csv", "stage1_prediction_dataset.csv"]:
               assert (artifact_dir / name).stat().st_size > 0
+          stage1_ledger = pd.read_csv(artifact_dir / "stage1_prediction_dataset.csv")
+          required_ledger_columns = {"actual", "stage1_prediction", "stage1_positive_confidence", "stage1_split", "stage1_route", "stage2_training_eligible"}
+          assert required_ledger_columns.issubset(stage1_ledger.columns)
+          assert stage1_ledger["stage2_training_eligible"].sum() > 0
           print("Artifact validation passed")
           print(json.dumps(metrics["test"], indent=2))
           PY
@@ -153,7 +157,7 @@ jobs:
           git add artifacts/mlp_variant_benchmark.json artifacts/mlp_variant_benchmark.csv artifacts/mlp_recall_study.json artifacts/mlp_recall_study_folds.csv artifacts/mlp_recall_study_oof.csv
           git add artifacts/mlp_bayesian_cascade.json artifacts/mlp_bayesian_cascade_folds.csv artifacts/mlp_bayesian_cascade_summary.csv
           git add artifacts/mlp_matched_recall_audit.json artifacts/mlp_matched_recall_audit.csv
-          git add artifacts/tree_stage2_cascade_comparison.json artifacts/tree_stage2_cascade_comparison.csv artifacts/tree_stage2_cascade_folds.csv
+          git add artifacts/tree_stage2_cascade_comparison.json artifacts/tree_stage2_cascade_comparison.csv artifacts/tree_stage2_cascade_folds.csv artifacts/stage1_prediction_dataset.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
