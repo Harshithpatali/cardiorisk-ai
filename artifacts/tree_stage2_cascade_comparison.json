@@ -1,188 +1,197 @@
 {
-  "experiment": "PyTorch MLP Stage 1 with XGBoost versus LightGBM Stage 2",
+  "experiment": "High-recall MLP with selective borderline XGBoost/LightGBM verification",
   "status": "research_only_not_promoted_to_deployed_inference",
   "test_rows": 13716,
-  "stage1": "Existing PyTorch MLP, unchanged; gate threshold selected on development OOF predictions for 99.5% recall.",
-  "stage2": "XGBoost and LightGBM classifiers trained on Stage-1-positive development rows; five-fold cross-fitted Stage-2 predictions.",
-  "threshold_selection": "Beta-Binomial precision posterior with Beta(1,1) prior; maximize the 95% posterior lower bound subject to 95%, 97%, or 98% end-to-end OOF recall.",
-  "comparison": "Single-stage MLP threshold is selected on development OOF scores to match each tree cascade's achieved OOF recall. Both are compared on identical untouched test rows.",
-  "bootstrap": "2,000 paired test-row bootstrap resamples; intervals are conditional on fitted models and frozen thresholds and exclude training/selection uncertainty.",
+  "stage1_gate_threshold": 0.14533300697803497,
+  "stage1_route_ceiling": 0.5,
+  "stage1_gate_oof_recall": 0.9950261587208017,
+  "stage1": "Existing PyTorch MLP unchanged. OOF development predictions determine high-recall gate.",
+  "routing": "Below gate: negative; gate <= confidence < 0.50: Stage 2; confidence >= 0.50: direct positive bypass.",
+  "stage2": "XGBoost and LightGBM trained only on Stage-1 OOF borderline development rows; each outer fold uses sigmoid calibration fitted inside that fold.",
+  "dataset_artifact": "stage1_prediction_dataset.csv contains original features, actual labels, Stage-1 prediction/confidence, split and route. Only development OOF borderline rows are Stage-2 training eligible.",
+  "threshold_selection": "Beta(1,1) posterior precision lower 95% bound subject to end-to-end OOF recall floors of 95%, 97%, and 98%.",
+  "comparison": "Single-stage MLP matched to cascade OOF recall; both evaluated on identical untouched test rows.",
+  "bootstrap": "2,000 paired test-row bootstrap resamples; conditional on fitted models and selected thresholds.",
   "models": [
     {
       "model": "xgboost",
       "status": "research_only_not_promoted",
       "stage1_gate_threshold": 0.14533300697803497,
+      "stage1_route_ceiling": 0.5,
       "stage1_gate_oof_recall": 0.9950261587208017,
-      "stage2_development_rows": 53090,
-      "stage2_development_positive_rate": 0.5087022038048596,
+      "stage2_development_rows": 24960,
+      "stage2_development_positive_rate": 0.272275641025641,
       "recall_target_results": [
         {
           "model": "xgboost",
           "recall_target": 0.95,
-          "cascade_oof_recall": 0.9505563333578955,
-          "baseline_oof_recall": 0.9505563333578955,
-          "stage2_threshold": 0.22307468324899674,
-          "bayesian_precision_oof_mean": 0.5650802689502618,
-          "bayesian_precision_oof_lower_95": 0.5605304353791871,
-          "baseline_test_precision": 0.5635622615331252,
-          "cascade_test_precision": 0.5648520917206371,
-          "baseline_test_recall": 0.9577070439139405,
-          "cascade_test_recall": 0.9510757441791925,
-          "baseline_test_specificity": 0.2737373737373737,
-          "cascade_test_specificity": 0.28253968253968254,
-          "baseline_test_f1": 0.7095752811442297,
-          "cascade_test_f1": 0.7087634526685702,
-          "baseline_test_false_positives": 5033,
-          "cascade_test_false_positives": 4972,
-          "baseline_test_false_negatives": 287,
-          "cascade_test_false_negatives": 332,
+          "cascade_oof_recall": 0.9500036843268734,
+          "baseline_oof_recall": 0.9500036843268734,
+          "stage2_threshold": 0.2128991553619838,
+          "bayesian_precision_oof_mean": 0.5666256482376725,
+          "bayesian_precision_oof_lower_95": 0.5628031427158318,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.188364230393774,
+          "baseline_test_precision": 0.5640580213671502,
+          "cascade_test_precision": 0.5677555692524434,
+          "baseline_test_recall": 0.9569702328323018,
+          "cascade_test_recall": 0.9501915708812261,
+          "baseline_test_specificity": 0.27575757575757576,
+          "cascade_test_specificity": 0.29163059163059163,
+          "baseline_test_f1": 0.7097655609596153,
+          "cascade_test_f1": 0.710797552775175,
+          "baseline_test_false_positives": 5019,
+          "cascade_test_false_positives": 4909,
+          "baseline_test_false_negatives": 292,
+          "cascade_test_false_negatives": 338,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.0012898301875119422,
+              "difference_cascade_minus_baseline": 0.0036975478852931953,
               "paired_bootstrap_95_ci": [
-                -0.0008739048482875017,
-                0.0035916264778523485
+                0.0015359390451875204,
+                0.005898276914935105
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.006631299734747964,
+              "difference_cascade_minus_baseline": -0.006778661951075682,
               "paired_bootstrap_95_ci": [
-                -0.010098565508684973,
-                -0.003242374953976435
+                -0.010231164149562813,
+                -0.0035303204889528907
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.008802308802308811,
+              "difference_cascade_minus_baseline": 0.015873015873015872,
               "paired_bootstrap_95_ci": [
-                0.002902074096194561,
-                0.015135987377480198
+                0.010053467716495576,
+                0.021910755385752823
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": -0.0008118284756595262,
+              "difference_cascade_minus_baseline": 0.0010319918155596852,
               "paired_bootstrap_95_ci": [
-                -0.0030157566201176626,
-                0.0015275469104704907
+                -0.0011922132724840884,
+                0.0032333320344947038
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         },
         {
           "model": "xgboost",
           "recall_target": 0.97,
-          "cascade_oof_recall": 0.9705622282808931,
-          "baseline_oof_recall": 0.9705622282808931,
-          "stage2_threshold": 0.18740653306245805,
-          "bayesian_precision_oof_mean": 0.5452776685364188,
-          "bayesian_precision_oof_lower_95": 0.5408358042585165,
-          "baseline_test_precision": 0.5401887406443215,
-          "cascade_test_precision": 0.5466136777612187,
-          "baseline_test_recall": 0.9784851164161509,
-          "cascade_test_recall": 0.972885352195697,
-          "baseline_test_specificity": 0.18441558441558442,
-          "cascade_test_specificity": 0.2098124098124098,
-          "baseline_test_f1": 0.6960897368696929,
-          "cascade_test_f1": 0.6999575911789653,
-          "baseline_test_false_positives": 5652,
-          "cascade_test_false_positives": 5476,
-          "baseline_test_false_negatives": 146,
-          "cascade_test_false_negatives": 184,
+          "cascade_oof_recall": 0.9700095792498711,
+          "baseline_oof_recall": 0.9700095792498711,
+          "stage2_threshold": 0.18651556285424717,
+          "bayesian_precision_oof_mean": 0.5469938089500146,
+          "bayesian_precision_oof_lower_95": 0.5432607071477616,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.188364230393774,
+          "baseline_test_precision": 0.5413405088062623,
+          "cascade_test_precision": 0.5481857523302264,
+          "baseline_test_recall": 0.9783377541998232,
+          "cascade_test_recall": 0.9706749189507811,
+          "baseline_test_specificity": 0.18831168831168832,
+          "cascade_test_specificity": 0.2165945165945166,
+          "baseline_test_f1": 0.697007874015748,
+          "cascade_test_f1": 0.7006701414743113,
+          "baseline_test_false_positives": 5625,
+          "cascade_test_false_positives": 5429,
+          "baseline_test_false_negatives": 147,
+          "cascade_test_false_negatives": 199,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.006424937116897178,
+              "difference_cascade_minus_baseline": 0.006845243523964095,
               "paired_bootstrap_95_ci": [
-                0.0046089810268007845,
-                0.008251064840794034
+                0.004946046728855782,
+                0.008671482454400106
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.005599764220453829,
+              "difference_cascade_minus_baseline": -0.007662835249042099,
               "paired_bootstrap_95_ci": [
-                -0.008091834974973825,
-                -0.003357541869719733
+                -0.010261841105341441,
+                -0.0053178154058172835
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.02539682539682539,
+              "difference_cascade_minus_baseline": 0.02828282828282827,
               "paired_bootstrap_95_ci": [
-                0.01993263936510895,
-                0.031140099380243993
+                0.022700817221447088,
+                0.03395469845423227
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": 0.0038678543092723894,
+              "difference_cascade_minus_baseline": 0.0036622674585632398,
               "paired_bootstrap_95_ci": [
-                0.002043010474999335,
-                0.0056180214923444265
+                0.0017836711074872141,
+                0.005471056709437205
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         },
         {
           "model": "xgboost",
           "recall_target": 0.98,
-          "cascade_oof_recall": 0.9803256944956157,
-          "baseline_oof_recall": 0.9803256944956157,
-          "stage2_threshold": 0.16678160488605498,
-          "bayesian_precision_oof_mean": 0.533182382879814,
-          "bayesian_precision_oof_lower_95": 0.5288041184980833,
-          "baseline_test_precision": 0.5272641435203399,
-          "cascade_test_precision": 0.5347662202261608,
-          "baseline_test_recall": 0.9874742116121427,
-          "cascade_test_recall": 0.9826112584733274,
-          "baseline_test_specificity": 0.13304473304473305,
-          "cascade_test_specificity": 0.1629148629148629,
-          "baseline_test_f1": 0.6874583226468325,
-          "cascade_test_f1": 0.6925993248506881,
-          "baseline_test_false_positives": 6008,
-          "cascade_test_false_positives": 5801,
-          "baseline_test_false_negatives": 85,
-          "cascade_test_false_negatives": 118,
+          "cascade_oof_recall": 0.9800309483457372,
+          "baseline_oof_recall": 0.9800309483457372,
+          "stage2_threshold": 0.1683275000023483,
+          "bayesian_precision_oof_mean": 0.5333319967119113,
+          "bayesian_precision_oof_lower_95": 0.5296569234518103,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.188364230393774,
+          "baseline_test_precision": 0.5277383766745469,
+          "cascade_test_precision": 0.5352780456444873,
+          "baseline_test_recall": 0.9868847627468317,
+          "cascade_test_recall": 0.9815797229590333,
+          "baseline_test_specificity": 0.1352092352092352,
+          "cascade_test_specificity": 0.1655122655122655,
+          "baseline_test_f1": 0.6877182172930787,
+          "cascade_test_f1": 0.6927717108684347,
+          "baseline_test_false_positives": 5993,
+          "cascade_test_false_positives": 5783,
+          "baseline_test_false_negatives": 89,
+          "cascade_test_false_negatives": 125,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.007502076705820926,
+              "difference_cascade_minus_baseline": 0.007539668969940405,
               "paired_bootstrap_95_ci": [
-                0.005753030239322549,
-                0.009247110985737253
+                0.005822318023214518,
+                0.009373675505562234
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.00486295313881524,
+              "difference_cascade_minus_baseline": -0.0053050397877983935,
               "paired_bootstrap_95_ci": [
-                -0.0071882057576744705,
-                -0.002508484580197809
+                -0.007685277892025713,
+                -0.002939382638354757
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.029870129870129852,
+              "difference_cascade_minus_baseline": 0.030303030303030304,
               "paired_bootstrap_95_ci": [
-                0.024368121611546507,
-                0.03534626896641161
+                0.024844630791808868,
+                0.03593123083416439
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": 0.005141002203855605,
+              "difference_cascade_minus_baseline": 0.005053493575356005,
               "paired_bootstrap_95_ci": [
-                0.0033976107639298756,
-                0.006913443137030332
+                0.0032817587457880494,
+                0.006913542801445958
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         }
       ]
     },
@@ -190,180 +199,184 @@
       "model": "lightgbm",
       "status": "research_only_not_promoted",
       "stage1_gate_threshold": 0.14533300697803497,
+      "stage1_route_ceiling": 0.5,
       "stage1_gate_oof_recall": 0.9950261587208017,
-      "stage2_development_rows": 53090,
-      "stage2_development_positive_rate": 0.5087022038048596,
+      "stage2_development_rows": 24960,
+      "stage2_development_positive_rate": 0.272275641025641,
       "recall_target_results": [
         {
           "model": "lightgbm",
           "recall_target": 0.95,
-          "cascade_oof_recall": 0.9508142362390392,
-          "baseline_oof_recall": 0.9508142362390392,
-          "stage2_threshold": 0.21653227186891816,
-          "bayesian_precision_oof_mean": 0.5668848570047885,
-          "bayesian_precision_oof_lower_95": 0.5623305103373604,
-          "baseline_test_precision": 0.5635780532200746,
-          "cascade_test_precision": 0.5660559305689489,
-          "baseline_test_recall": 0.9581491305629236,
-          "cascade_test_recall": 0.9515178308281756,
-          "baseline_test_specificity": 0.27344877344877344,
-          "cascade_test_specificity": 0.2857142857142857,
-          "baseline_test_f1": 0.7097091087703978,
-          "cascade_test_f1": 0.7098334524267575,
-          "baseline_test_false_positives": 5035,
-          "cascade_test_false_positives": 4950,
-          "baseline_test_false_negatives": 284,
-          "cascade_test_false_negatives": 329,
+          "cascade_oof_recall": 0.9500405275956083,
+          "baseline_oof_recall": 0.9500405275956083,
+          "stage2_threshold": 0.21929393788526053,
+          "bayesian_precision_oof_mean": 0.5661872872982764,
+          "bayesian_precision_oof_lower_95": 0.5623658936121028,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.18788663807296588,
+          "baseline_test_precision": 0.5639600521059488,
+          "cascade_test_precision": 0.5684182683830012,
+          "baseline_test_recall": 0.9569702328323018,
+          "cascade_test_recall": 0.9500442086648984,
+          "baseline_test_specificity": 0.2754689754689755,
+          "cascade_test_specificity": 0.29365079365079366,
+          "baseline_test_f1": 0.7096879951915196,
+          "cascade_test_f1": 0.7112753751103266,
+          "baseline_test_false_positives": 5021,
+          "cascade_test_false_positives": 4895,
+          "baseline_test_false_negatives": 292,
+          "cascade_test_false_negatives": 339,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.00247787734887428,
+              "difference_cascade_minus_baseline": 0.004458216277052451,
               "paired_bootstrap_95_ci": [
-                0.0001689712516532743,
-                0.004853270782169853
+                0.0019896889402338134,
+                0.0068860755984408405
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.006631299734747964,
+              "difference_cascade_minus_baseline": -0.0069260241674033995,
               "paired_bootstrap_95_ci": [
-                -0.010125881513967427,
-                -0.003122572243390146
+                -0.010577045956931586,
+                -0.00335995763799549
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.012265512265512257,
+              "difference_cascade_minus_baseline": 0.018181818181818188,
               "paired_bootstrap_95_ci": [
-                0.006028921252270609,
-                0.018523934202957865
+                0.011817739661010475,
+                0.0248369622518387
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": 0.00012434365635971556,
+              "difference_cascade_minus_baseline": 0.0015873799188069748,
               "paired_bootstrap_95_ci": [
-                -0.0023284796552856314,
-                0.0025525842891858984
+                -0.0008735476750171084,
+                0.004082456023881957
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         },
         {
           "model": "lightgbm",
           "recall_target": 0.97,
-          "cascade_oof_recall": 0.9709675042369759,
-          "baseline_oof_recall": 0.9709675042369759,
-          "stage2_threshold": 0.1798346183288121,
-          "bayesian_precision_oof_mean": 0.5455053505267733,
-          "bayesian_precision_oof_lower_95": 0.5410636623960914,
-          "baseline_test_precision": 0.5398424173503371,
-          "cascade_test_precision": 0.5472401790154152,
-          "baseline_test_recall": 0.9793692897141173,
-          "cascade_test_recall": 0.9730327144120248,
-          "baseline_test_specificity": 0.18253968253968253,
-          "cascade_test_specificity": 0.21168831168831168,
-          "baseline_test_f1": 0.6960255537518982,
-          "cascade_test_f1": 0.7005092297899427,
-          "baseline_test_false_positives": 5665,
-          "cascade_test_false_positives": 5463,
-          "baseline_test_false_negatives": 140,
-          "cascade_test_false_negatives": 183,
+          "cascade_oof_recall": 0.9700464225186058,
+          "baseline_oof_recall": 0.9700464225186058,
+          "stage2_threshold": 0.1862632941291288,
+          "bayesian_precision_oof_mean": 0.5461069398929771,
+          "bayesian_precision_oof_lower_95": 0.5423763370425623,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.18788663807296588,
+          "baseline_test_precision": 0.5413405088062623,
+          "cascade_test_precision": 0.548293089092423,
+          "baseline_test_recall": 0.9783377541998232,
+          "cascade_test_recall": 0.9703801945181255,
+          "baseline_test_specificity": 0.18831168831168832,
+          "cascade_test_specificity": 0.21717171717171718,
+          "baseline_test_f1": 0.697007874015748,
+          "cascade_test_f1": 0.7006809959565865,
+          "baseline_test_false_positives": 5625,
+          "cascade_test_false_positives": 5425,
+          "baseline_test_false_negatives": 147,
+          "cascade_test_false_negatives": 201,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.007397761665078106,
+              "difference_cascade_minus_baseline": 0.006952580286160748,
               "paired_bootstrap_95_ci": [
-                0.005516345693343585,
-                0.00918364583104037
+                0.005099721673238447,
+                0.00879214038459341
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.006336575302092529,
+              "difference_cascade_minus_baseline": -0.007957559681697646,
               "paired_bootstrap_95_ci": [
-                -0.008930033267147756,
-                -0.0038638010662086445
+                -0.010648131599641748,
+                -0.005297233666862855
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.029148629148629146,
+              "difference_cascade_minus_baseline": 0.028860028860028863,
               "paired_bootstrap_95_ci": [
-                0.023439960063499393,
-                0.03458805510257027
+                0.023206413804622586,
+                0.034462785983203015
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": 0.0044836760380444485,
+              "difference_cascade_minus_baseline": 0.003673121940838464,
               "paired_bootstrap_95_ci": [
-                0.002688825055691968,
-                0.006170043130284516
+                0.0017860025743869884,
+                0.005560342871619022
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         },
         {
           "model": "lightgbm",
           "recall_target": 0.98,
-          "cascade_oof_recall": 0.980252007958146,
-          "baseline_oof_recall": 0.980252007958146,
-          "stage2_threshold": 0.15684841634086408,
-          "bayesian_precision_oof_mean": 0.5331423075381717,
-          "bayesian_precision_oof_lower_95": 0.5287640213063782,
-          "baseline_test_precision": 0.5272641435203399,
-          "cascade_test_precision": 0.534016327837362,
-          "baseline_test_recall": 0.9874742116121427,
-          "cascade_test_recall": 0.9832007073386384,
-          "baseline_test_specificity": 0.13304473304473305,
-          "cascade_test_specificity": 0.15988455988455988,
-          "baseline_test_f1": 0.6874583226468325,
-          "cascade_test_f1": 0.6921161825726141,
-          "baseline_test_false_positives": 6008,
-          "cascade_test_false_positives": 5822,
-          "baseline_test_false_negatives": 85,
-          "cascade_test_false_negatives": 114,
+          "cascade_oof_recall": 0.9800309483457372,
+          "baseline_oof_recall": 0.9800309483457372,
+          "stage2_threshold": 0.1639152447636939,
+          "bayesian_precision_oof_mean": 0.5331075393803358,
+          "bayesian_precision_oof_lower_95": 0.5294331347506045,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.18788663807296588,
+          "baseline_test_precision": 0.5277383766745469,
+          "cascade_test_precision": 0.5358205354989145,
+          "baseline_test_recall": 0.9868847627468317,
+          "cascade_test_recall": 0.9820218096080165,
+          "baseline_test_specificity": 0.1352092352092352,
+          "cascade_test_specificity": 0.16695526695526697,
+          "baseline_test_f1": 0.6877182172930787,
+          "cascade_test_f1": 0.6933361077875462,
+          "baseline_test_false_positives": 5993,
+          "cascade_test_false_positives": 5773,
+          "baseline_test_false_negatives": 89,
+          "cascade_test_false_negatives": 122,
           "paired_bootstrap_differences": {
             "precision": {
-              "difference_cascade_minus_baseline": 0.00675218431702207,
+              "difference_cascade_minus_baseline": 0.00808215882436758,
               "paired_bootstrap_95_ci": [
-                0.005015890432622155,
-                0.008447476105500647
+                0.006222818630105559,
+                0.010036842960491676
               ],
               "bootstrap_replicates": 2000
             },
             "recall": {
-              "difference_cascade_minus_baseline": -0.004273504273504258,
+              "difference_cascade_minus_baseline": -0.004862953138815129,
               "paired_bootstrap_95_ci": [
-                -0.006466831780465043,
-                -0.0020865786315726925
+                -0.0072644451533491975,
+                -0.0024976770149713174
               ],
               "bootstrap_replicates": 2000
             },
             "specificity": {
-              "difference_cascade_minus_baseline": 0.02683982683982683,
+              "difference_cascade_minus_baseline": 0.03174603174603177,
               "paired_bootstrap_95_ci": [
-                0.021159984693977927,
-                0.03239826733734021
+                0.02588331931480491,
+                0.0376552323931237
               ],
               "bootstrap_replicates": 2000
             },
             "f1": {
-              "difference_cascade_minus_baseline": 0.0046578599257816045,
+              "difference_cascade_minus_baseline": 0.005617890494467481,
               "paired_bootstrap_95_ci": [
-                0.002879238171351742,
-                0.006360283445326819
+                0.003770140947283043,
+                0.007522754985355353
               ],
               "bootstrap_replicates": 2000
             }
-          },
-          "test_stage1_gate_rows": 13415
+          }
         }
       ]
     }
   ],
-  "warning": "Portfolio research only. The dataset is cross-sectional and this experiment is not clinically validated or for diagnosis, screening, treatment, or care decisions."
+  "warning": "Educational portfolio research only; cross-sectional labels are not future risk and this is not clinically validated or for diagnosis, screening, treatment or care decisions."
 }
