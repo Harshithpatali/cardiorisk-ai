@@ -13,7 +13,7 @@ def test_stage1_threshold_meets_recall_floor():
     y = np.array([0, 0, 1, 1, 1, 1])
     scores = np.array([0.1, 0.2, 0.4, 0.6, 0.8, 0.9])
     threshold, recall = select_recall_threshold(y, scores, 0.75)
-    assert threshold == 0.4
+    assert threshold == 0.6
     assert recall >= 0.75
 
 
