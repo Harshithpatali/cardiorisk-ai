@@ -180,6 +180,20 @@ The live input form calls the **MLP only**. Stage 2 is not active in the live pr
 
 The project uses a cross-sectional cardiovascular dataset with demographic, body-measurement, blood-pressure, lifestyle and categorical health-indicator fields. Cleaning removes invalid target values and implausible measurement ranges; engineered features include BMI, pulse pressure and mean arterial pressure.
 
+### Input schema and preprocessing
+
+| Raw field | Meaning | Handling |
+|---|---|---|
+| `age` | Age in days in the source file | Converted to years using 365.25 days |
+| `gender` | Dataset gender code | One-hot encoded |
+| `height`, `weight` | cm and kg | Used to derive BMI |
+| `ap_hi`, `ap_lo` | Systolic and diastolic pressure | Used to derive pulse pressure and mean arterial pressure |
+| `cholesterol`, `gluc` | Ordinal dataset categories | One-hot encoded |
+| `smoke`, `alco`, `active` | Binary lifestyle indicators | Imputed and retained as binary features |
+| `cardio` | Cross-sectional target label (0/1) | Prediction target; not a future event |
+
+The cleaning pipeline keeps rows with a valid binary target, systolic pressure 70–250, diastolic pressure 40–180, systolic greater than diastolic, height 120–220 cm, weight 35–200 kg, and BMI 12–60. These are dataset quality filters, not clinical reference ranges. The identifier is retained in the Stage-1 audit ledger but excluded from model features. All learned imputers, scalers and encoders are fitted within each training fold.
+
 Important limitations:
 
 - Cross-sectional association is not future-event prediction.
