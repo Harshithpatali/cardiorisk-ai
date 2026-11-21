@@ -6,7 +6,7 @@ A modular machine-learning research project with a Streamlit interface. The depl
 
 ## Project goals and error-cost philosophy
 
-The project treats a false negative (an actual positive row predicted negative) as more costly than a false positive (an actual negative row predicted positive). The modelling workflow therefore emphasizes sensitivity/recall, reports false-negative counts explicitly, and compares operating points at stringent recall constraints.
+The project treats a false negative (an actual positive row predicted negative) as more costly than a false positive (an actual negative row predicted positive). The modelling workflow therefore emphasizes sensitivity/recall, reports false-negative counts explicitly, and compares operating points at stringent recall constraints. The deployed MLP selects the maximum-recall development OOF threshold subject to a 50% precision guardrail; this is a transparent modelling guardrail, not a medical cost ratio.
 
 This is an experimental design preference, not a clinically established cost ratio. No numeric clinical harm/cost ratio is assumed. Precision and specificity are still reported, but a gain in either is not considered a success if it causes an unacceptable increase in false negatives.
 
