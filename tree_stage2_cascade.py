@@ -192,7 +192,7 @@ def run():
             final_scores = np.zeros(len(y_test), dtype=float)
             final_scores[test_direct] = 1.0
             final_scores[np.flatnonzero(test_route)] = s2_test
-            cascade_pred = (test_direct | (test_route & (s2_test >= choice["threshold"]))).astype(int)
+            cascade_pred = (test_direct | (test_route & (final_scores >= choice["threshold"]))).astype(int)
             cascade_metrics = evaluate_predictions(y_test, cascade_pred.astype(float), 0.5)
             baseline_threshold, baseline_recall = select_recall_threshold(y_dev, p1_dev, choice["cascade_recall_oof"])
             baseline_metrics = evaluate_predictions(y_test, p1_test, baseline_threshold)
