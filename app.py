@@ -1149,8 +1149,9 @@ st.caption(
 with st.expander("How this model was evaluated"):
     st.write(
         "The model is a PyTorch MLP with 128, 64, and 32 hidden units. "
-        "The threshold was selected using out-of-fold training predictions, "
-        "subject to a minimum precision constraint of 0.55."
+        f"The threshold was selected using out-of-fold development predictions, "
+        f"maximizing recall subject to a minimum precision guardrail of "
+        f"{report['threshold_selection']['minimum_precision']:.0%}."
     )
     st.write(
         "The final test partition was held out from preprocessing, model selection, "
