@@ -179,8 +179,12 @@ def run():
     experiments = []
     all_fold_rows = []
     for floor_index, recall_floor in enumerate(RECALL_FLOORS):
+        # Keep Stage 1 deliberately more sensitive than the final cascade
+        # target. This recall buffer gives Stage 2 room to reject false
+        # positives while retaining the requested end-to-end recall.
+        stage1_gate_recall_target = 0.995
         stage1_threshold, stage1_recall = select_recall_threshold(
-            y_train, stage1_oof, recall_floor
+            y_train, stage1_oof, stage1_gate_recall_target
         )
         dev_gate = stage1_oof >= stage1_threshold
         test_gate = stage1_test >= stage1_threshold
@@ -249,7 +253,8 @@ def run():
             "oof_lower_credible_bound": bayes_choice["precision_lower_credible_bound"],
         }
         experiments.append({
-            "stage1_recall_floor": recall_floor,
+            "cascade_recall_target": recall_floor,
+            "stage1_gate_recall_target": stage1_gate_recall_target,
             "stage1_threshold": stage1_threshold,
             "stage1_oof_recall": stage1_recall,
             "stage1_test_metrics": stage1_metrics,
@@ -266,9 +271,9 @@ def run():
         "experiment": "Two-stage PyTorch MLP cascade with Bayesian precision decision",
         "status": "research_experiment_only_not_promoted_to_deployed_inference",
         "method": {
-            "stage1": "Existing PyTorch MLP; recall-constrained threshold selected from saved development OOF predictions.",
+            "stage1": "Existing PyTorch MLP; gate threshold targets 99.5% development OOF recall to create a recall buffer for Stage 2.",
             "stage2": "Second PyTorch MLP trained only on Stage-1-positive OOF development rows; precision-oriented unweighted BCE objective.",
-            "bayesian_component": "Beta-Binomial posterior for Stage-2 precision with Beta(1,1) prior. Threshold maximizes the 95% posterior lower credible bound subject to the overall cascade OOF recall floor.",
+            "bayesian_component": "Beta-Binomial posterior for Stage-2 precision with Beta(1,1) prior. Threshold maximizes the 95% posterior lower credible bound subject to the requested end-to-end cascade OOF recall target (95%, 97%, or 98%).",
             "uncertainty": "Monte Carlo dropout (30 stochastic passes) estimates an approximate predictive mean and epistemic uncertainty for Stage 2.",
             "leakage_controls": "Stage-1 OOF scores determine development gating; Stage-2 predictions are cross-fitted on gated development rows; all thresholds are selected without the untouched test set.",
             "limitation": "Bayesian credible intervals quantify binomial uncertainty conditional on this dataset and selected threshold; they do not establish clinical validity or population generalisability.",
@@ -287,8 +292,8 @@ def run():
     )
     pd.DataFrame([
         {
-            "stage1_recall_floor": row["stage1_recall_floor"],
-            "stage1_test_recall": row["stage1_test_metrics"]["recall"],
+            "cascade_recall_target": row["cascade_recall_target"],
+            "stage1_gate_test_recall": row["stage1_test_metrics"]["recall"],
             "stage1_test_precision": row["stage1_test_metrics"]["precision"],
             "cascade_test_recall": row["cascade_test_metrics"]["recall"],
             "cascade_test_precision": row["cascade_test_metrics"]["precision"],
