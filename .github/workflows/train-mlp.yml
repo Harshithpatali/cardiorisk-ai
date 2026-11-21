@@ -135,6 +135,15 @@ jobs:
           assert {m["model"] for m in tree["models"]} == {"xgboost", "lightgbm"}
           assert all(len(m["recall_target_results"]) == 5 for m in tree["models"])
           assert {r["recall_target"] for m in tree["models"] for r in m["recall_target_results"]} == {0.95, 0.97, 0.98, 0.99, 0.995}
+          assert tree["stage1_gate_oof_recall"] >= 0.995
+          for model_result in tree["models"]:
+              by_target = {row["recall_target"]: row for row in model_result["recall_target_results"]}
+              conservative = by_target[0.995]
+              assert conservative["cascade_test_false_negatives"] <= conservative["baseline_test_false_negatives"]
+              for row in model_result["recall_target_results"]:
+                  for metric in ["cascade_test_false_negatives", "baseline_test_false_negatives",
+                                 "cascade_test_false_positives", "baseline_test_false_positives"]:
+                      assert isinstance(row[metric], int) and row[metric] >= 0
           for name in ["tree_stage2_cascade_comparison.csv", "tree_stage2_cascade_folds.csv", "stage1_prediction_dataset.csv"]:
               assert (artifact_dir / name).stat().st_size > 0
           stage1_ledger = pd.read_csv(artifact_dir / "stage1_prediction_dataset.csv")
