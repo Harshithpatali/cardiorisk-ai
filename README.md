@@ -1,234 +1,147 @@
-# CardioRisk AI — High-Recall Cardiovascular Dataset Research
+# CardioRisk AI — Recall-first cardiovascular classification research
 
-A modular machine-learning research project with a Streamlit interface. The deployed inference path uses a **PyTorch multilayer perceptron (MLP)**. A separate, leakage-aware experiment evaluates a two-tier architecture in which a high-recall MLP screens observations and a calibrated tree model (XGBoost or LightGBM) selectively verifies borderline cases.
+A Streamlit research application for exploring cardiovascular dataset patterns with a PyTorch multilayer perceptron (MLP), statistical evaluation, explainability, and an experimental two-tier verification cascade.
 
-> **Research and education only.** This project is not clinically validated and must not be used for diagnosis, screening, treatment, triage, or healthcare decisions. A negative model output does not rule out cardiovascular disease. Anyone with health concerns should seek qualified medical advice. The dataset is cross-sectional: its label is not a prediction of future disease.
+> **Research and education only.** This project is not clinically validated and must not be used for diagnosis, treatment, screening, triage, or healthcare decisions. The source dataset is cross-sectional: the target is a recorded class label, not a future disease event or an individual's future cardiovascular risk. A negative output does not rule out disease or justify delaying professional care.
 
-## Project goals and error-cost philosophy
+## Project goals
 
-The project treats a false negative (an actual positive row predicted negative) as more costly than a false positive (an actual negative row predicted positive). The modelling workflow therefore emphasizes sensitivity/recall, reports false-negative counts explicitly, and compares operating points at stringent recall constraints. The deployed MLP selects the maximum-recall development OOF threshold subject to a 50% precision guardrail; this is a transparent modelling guardrail, not a medical cost ratio.
+The design gives more weight to avoiding false negatives (actual positive observations classified negative) than to avoiding false positives. The research therefore reports recall and false-negative counts alongside precision, specificity, false positives, calibration, and discrimination. No model is promoted just because its precision improves.
 
-This is an experimental design preference, not a clinically established cost ratio. No numeric clinical harm/cost ratio is assumed. Precision and specificity are still reported, but a gain in either is not considered a success if it causes an unacceptable increase in false negatives.
+## Current application
 
-## What is deployed versus experimental
+- **Live individual-observation inference:** the deployed PyTorch MLP (128–64–32) only.
+- **Research comparison:** a high-recall MLP screening gate followed by calibrated XGBoost or LightGBM for borderline observations.
+- **Explainability:** Integrated Gradients for the live MLP output, with completeness diagnostics.
+- **Evaluation:** stratified holdout, fold-based validation, out-of-fold (OOF) development predictions, threshold analysis, calibration diagnostics, subgroup summaries, and paired comparisons.
+- **Deployment:** the research cascade does not replace or change the existing MLP inference path. Render and Streamlit deployment configuration are not changed by the cascade experiment.
 
-| Component | Role | Used by live Streamlit prediction form? |
-|---|---|---|
-| PyTorch MLP (128–64–32) | Primary high-recall classifier | **Yes** |
-| XGBoost Stage 2 | Selective verification candidate | No — research only |
-| LightGBM Stage 2 | Selective verification candidate | No — research only |
+## Two-tier model: how it works
 
-The deployed MLP and its saved preprocessing/model artifacts remain the production-style demonstration. The two-tier experiment is presented in the Streamlit **Two-tier study** tab for transparent comparison; it does not silently replace the deployed inference path.
-
-## Architecture: two-tier selective verification
-
-### Routing diagram
+The purpose of the second tier is to verify uncertain positive-looking observations, not to screen the entire population again.
 
 ```mermaid
 flowchart TD
-    A[Input observation] --> B[Stage 1: PyTorch MLP]
-    B -->|score below high-recall gate| C[Stage-1 negative]
-    B -->|gate <= score < 0.50| D[Borderline band]
-    B -->|score >= 0.50| E[Direct positive]
-    D --> F[Stage 2: calibrated XGBoost or LightGBM]
-    F -->|Stage-2 score >= selected threshold| G[Verified positive]
-    F -->|Stage-2 score below threshold| H[Stage-2 negative]
-    C --> I[Final cascade output]
-    E --> I
-    G --> I
-    H --> I
+    A[New observation] --> B[Stage 1: PyTorch MLP]
+    B --> C{MLP score}
+    C -->|Below recall gate| D[Stage 1 negative]
+    C -->|Gate to below 0.50| E[Borderline band]
+    C -->|At least 0.50| F[Direct positive]
+    E --> G[Stage 2: calibrated XGBoost or LightGBM]
+    G --> H{Stage 2 score >= selected threshold?}
+    H -->|Yes| I[Final positive]
+    H -->|No| J[Final negative]
+    F --> I
 ```
 
-### Stage 1 — high-recall screen
+### Routing policy
 
-1. The original MLP is trained using the project’s cross-validation pipeline.
-2. Out-of-fold (OOF) development predictions are generated so each development row is scored by a model that did not train on that row.
-3. A Stage-1 gate is selected from development OOF predictions to target **99.5% recall**.
-4. The final MLP is refitted on the development partition and scores the untouched test partition.
+1. **Stage 1 — high-recall screen.** The existing MLP produces a positive-class score. Its gate is selected from development OOF predictions to meet a 99.5% recall target. In the current experiment the selected gate is approximately **0.1453**, with **99.50% development OOF recall**.
+2. **Below the gate.** The row is classified negative by the cascade. Stage 2 does not see it and cannot recover a missed positive. This is the most important structural limitation when false negatives are costly.
+3. **Borderline band.** Scores from the gate up to (but not including) 0.50 are sent to Stage 2. The experiment routed **24,960 development rows** into this band.
+4. **Direct positive.** Scores at or above 0.50 bypass Stage 2 and remain positive.
+5. **Stage 2 — selective verification.** XGBoost and LightGBM are evaluated separately. They are trained only on borderline development rows with OOF Stage-1 predictions. A sigmoid calibrator is fitted within each outer training fold.
+6. **Final decision.** A borderline observation is positive only if its Stage-2 score meets the threshold selected using development OOF predictions. Direct Stage-1 positives remain positive.
 
-The current experiment selected a gate of **0.145333** with **99.5026% development OOF recall**. This is a research operating point, not a clinical threshold.
-
-### Stage 2 — selective verification
-
-Only observations with Stage-1 scores in the interval **[gate, 0.50)** are sent to Stage 2. Scores at or above 0.50 bypass Stage 2 as direct positives. Scores below the gate do not reach Stage 2 and therefore cannot be recovered by it.
-
-Two calibrated tree models are compared:
-
-- **XGBoost**
-- **LightGBM**
-
-Each model is trained only on the Stage-1 borderline development population. Five outer stratified folds produce Stage-2 OOF scores; sigmoid calibration is fitted inside each outer training fold. The Stage-2 decision threshold is selected from development OOF data, never from the untouched test set.
-
-### Final decision rule
-
-```text
-positive =
-    (stage1_score >= 0.50)
-    OR
-    (gate <= stage1_score < 0.50 AND stage2_score >= stage2_threshold)
-```
-
-The Stage-2 score is a calibrated model score intended to estimate the positive-class probability under the calibration procedure. It is **not** the literal precision of an individual prediction, a guarantee, or a clinically validated probability.
+The Stage-2 score is a model-estimated positive-class probability after calibration. It is **not** the literal precision for that individual. Precision is a population-level metric measured across observations at a decision threshold.
 
 ### Leakage controls
 
-- Split development and test data before cross-validation.
-- Fit preprocessing inside each training fold.
-- Use OOF Stage-1 predictions to define Stage-2 development eligibility.
-- Train Stage 2 only on OOF-routed development rows.
-- Select Stage-2 thresholds on development OOF predictions only.
-- Evaluate each frozen cascade once on the same untouched test rows as the matched MLP reference.
-- Use paired bootstrap resampling for test-set metric differences. The intervals are conditional on the fitted models and frozen thresholds; they do not include all model-training or selection uncertainty.
+- The stratified development/test split is made before model selection.
+- Stage-1 development routing uses OOF MLP predictions, not in-sample fitted predictions.
+- Preprocessing is fitted within each Stage-2 fold.
+- Stage-2 models and sigmoid calibrators are fitted only on the corresponding training fold.
+- Stage-2 thresholds are selected from development OOF predictions only.
+- The untouched test partition is used for the final comparison, not threshold tuning.
+- The test set contains **13,716 rows** in the current published run.
+- The comparison is research-only. The test-set results are not a substitute for independent external validation.
 
-## Latest two-tier experiment
+## Two-tier experiment: current held-out results
 
-The latest successful GitHub Actions run evaluated **13,716 untouched test rows** and compared five development OOF end-to-end recall constraints: 95%, 97%, 98%, 99%, and 99.5%.
+The table below shows the LightGBM cascade against a single-stage MLP baseline matched to the same development OOF recall constraint. Counts are measured on the same 13,716 held-out test rows. The development target is not a guarantee that the test recall will equal it.
 
-### High-recall comparison: 99% and 99.5%
-
-The MLP reference threshold is selected on development OOF predictions to match the cascade’s OOF recall. It is therefore a matched-operating-point reference, not necessarily the default threshold currently used by the deployed Streamlit MLP.
-
-| OOF recall constraint | Model | Test recall | Test precision | Specificity | False positives | False negatives |
+| Development OOF recall constraint | Model | Test recall | Test precision | Specificity | False positives | False negatives |
 |---:|---|---:|---:|---:|---:|---:|
-| 99% | Matched MLP | 99.44% | 51.32% | 7.62% | 6,402 | 38 |
-| 99% | XGBoost cascade | 99.29% | 51.85% | 9.70% | 6,258 | 48 |
-| 99% | LightGBM cascade | 99.26% | 52.00% | 10.27% | 6,218 | 50 |
-| 99.5% | Matched MLP | 99.82% | 50.50% | 4.17% | 6,641 | 12 |
-| 99.5% | XGBoost cascade | 99.82% | 50.51% | 4.23% | 6,637 | 12 |
+| 99.0% | Matched MLP | 99.44% | 51.32% | 7.62% | 6,402 | 38 |
+| 99.0% | LightGBM cascade | 99.26% | 52.00% | 10.27% | 6,218 | 50 |
+| 99.5% | Matched MLP | 99.82% | 4? | 4.17% | 6,641 | 12 |
 | 99.5% | LightGBM cascade | 99.82% | 50.51% | 4.24% | 6,636 | 12 |
 
-**Interpretation under a false-negative-first policy**
+At the 99.5% point, the matched MLP precision is **50.50%** (not a high-precision result); LightGBM improves it to **50.51%**, with the same 12 false negatives and five fewer false positives. This is a very small gain and is not enough evidence to replace the MLP.
 
-- At the 99% target, XGBoost adds **8 false negatives** and LightGBM adds **12 false negatives** compared with their matched MLP references. They reduce false positives, but this is the wrong trade-off when missed positives are the dominant concern.
-- At the 99.5% target, both cascades match the MLP reference’s **12 false negatives**. LightGBM removes **5 false positives** (6,636 versus 6,641); XGBoost removes 4.
-- For LightGBM at 99.5%, the paired 2,000-resample bootstrap estimates a precision gain of **0.019 percentage points** (95% CI: +0.0038 to +0.0374 pp) and specificity gain of **0.072 percentage points** (95% CI: +0.0144 to +0.1433 pp), with no recall change. These intervals are conditional on the fitted models and frozen thresholds.
-- The 99.5% result is the most defensible research operating point for the stated preference, but the absolute improvement is very small. It does **not** justify replacing the deployed MLP.
-- At lower recall constraints, the cascades also tend to improve precision/specificity while sacrificing test recall. Read the false-negative column before considering any apparent precision gain.
+At the 99.0% point, LightGBM removes 184 false positives but adds 12 false negatives compared with the matched MLP. Given the project's stated error preference, this is an unfavorable trade-off. The XGBoost results show the same general pattern: improved precision/specificity at some points, but extra false negatives at the 99.0% point; at 99.5% it matches the MLP false-negative count and removes four false positives.
 
-### Recall profile across all five operating points
+### Error-count comparison
 
 ```mermaid
 xychart-beta
-    title "Untouched-test recall at matched operating points"
-    x-axis ["95%", "97%", "98%", "99%", "99.5%"]
-    y-axis "Recall (%)" 94 --> 100
-    line [95.70, 97.83, 98.69, 99.44, 99.82]
-    line [95.70, 97.83, 98.69, 99.41, 99.82]
-    line [95.02, 97.07, 98.16, 99.29, 99.82]
-    line [95.00, 97.04, 98.20, 99.26, 99.82]
-```
-
-Series order: matched MLP reference (LightGBM-matched), matched MLP reference (XGBoost-matched), XGBoost cascade, LightGBM cascade.
-
-### Error-count comparison at 99.5%
-
-```mermaid
-xychart-beta
-    title "False negatives at the 99.5% OOF recall constraint"
-    x-axis ["Matched MLP", "XGBoost", "LightGBM"]
-    y-axis "False negatives" 0 --> 15
-    bar [12, 12, 12]
+    title "LightGBM cascade vs matched MLP: false negatives"
+    x-axis ["99.0% target", "99.5% target"]
+    y-axis "False negatives" 0 --> 55
+    bar [38, 12]
+    bar [50, 12]
 ```
 
 ```mermaid
 xychart-beta
-    title "False positives at the 99.5% OOF recall constraint"
-    x-axis ["Matched MLP", "XGBoost", "LightGBM"]
-    y-axis "False positives" 6600 --> 6660
-    bar [6641, 6637, 6636]
+    title "LightGBM cascade vs matched MLP: false positives"
+    x-axis ["99.0% target", "99.5% target"]
+    y-axis "False positives" 0 --> 7000
+    bar [6402, 6641]
+    bar [6218, 6636]
 ```
 
-The charts summarize one fixed test evaluation. They are not confidence intervals or evidence of clinical effectiveness.
+In each chart, the first series is the matched MLP and the second is the LightGBM cascade. Charts are descriptive summaries of this particular test split, not proof of generalization.
 
-## Deployed MLP test snapshot
+## How to use the Streamlit interface
 
-The current deployed MLP high-recall operating point has the following held-out test results:
+1. Open the deployed Streamlit application.
+2. Scroll to **Explore an observation**.
+3. Change the input values in the main-page form: age, gender, height, weight, systolic/diastolic pressure, cholesterol, glucose, smoking, alcohol, and activity.
+4. Check that systolic pressure is greater than diastolic pressure.
+5. Press **Run cardiovascular data analysis**.
+6. Review the MLP class output, score, selected threshold, and Integrated Gradients explanation.
+7. Change one or more values and submit again to compare how the MLP output changes.
 
-| Metric | Value |
-|---|---:|
-| Recall | 97.44% |
-| Precision | 54.65% |
-| Specificity | 20.82% |
-| F1 | 0.7002 |
-| ROC-AUC | 0.8025 |
-| PR-AUC | 0.7804 |
-| Brier score | 0.1824 |
-| Threshold | 0.237512 |
+A simple non-clinical UI smoke-test example is: age 55, female, height 165 cm, weight 75 kg, blood pressure 120/80, normal cholesterol and glucose, non-smoker, no alcohol, physically active. Then alter one input at a time and submit again. These values are only test inputs, not a healthy/unhealthy profile or medical advice.
 
-Confusion matrix (rows = actual class, columns = predicted class):
+**Important:** the current individual-observation form calls only the deployed MLP. The XGBoost/LightGBM cascade tab is an aggregate evaluation study, not a live second-stage prediction endpoint. It cannot yet score a newly entered observation with Stage 2 because the research workflow currently publishes comparison and ledger artifacts rather than a versioned deployable cascade model bundle. This is intentional: the cascade has not passed the false-negative-first promotion criteria.
 
-| | Predicted 0 | Predicted 1 |
-|---|---:|---:|
-| Actual 0 | 1,443 | 5,487 |
-| Actual 1 | 174 | 6,612 |
+## Dashboard guide
 
-This illustrates the trade-off: the high-recall threshold captures most positive labels but produces many false positives. It is a model operating point on this dataset, not a clinically approved threshold.
+- **Two-tier study:** routing diagram, gate, selectable development recall constraint, held-out metrics and error-count charts.
+- **Overview:** held-out MLP metrics, confusion matrix and fold summaries.
+- **Threshold lab:** development OOF recall/specificity/precision trade-offs.
+- **Calibration:** reliability bins and calibration diagnostics.
+- **Subgroups:** descriptive metrics by available demographic/data groups; not a fairness certification.
+- **Benchmark:** cross-validated model comparisons.
+- **Specificity study:** model specificity at selected development recall floors.
+- **Boosting & calibration:** development-only CatBoost/XGBoost calibration research.
 
-## Streamlit interface
+## Repository structure
 
-The Streamlit app includes:
-
-- Main-page input form for dataset-style observations.
-- MLP inference and a clearly labelled model score (not a clinical probability).
-- Integrated Gradients feature-contribution explanation, when the explanation background is available.
-- Model performance overview and confusion matrix.
-- Threshold exploration, calibration diagnostics and subgroup summaries.
-- Cross-validated model benchmarks and specificity/boosting research.
-- **Two-tier study tab** with a routing explanation, interactive recall-constraint selector, test metrics, precision/recall/specificity charts, and false-positive/false-negative comparisons.
-
-The live input form calls the **MLP only**. Stage 2 is not active in the live prediction path.
-
-## Dataset and limitations
-
-The project uses a cross-sectional cardiovascular dataset with demographic, body-measurement, blood-pressure, lifestyle and categorical health-indicator fields. Cleaning removes invalid target values and implausible measurement ranges; engineered features include BMI, pulse pressure and mean arterial pressure.
-
-### Input schema and preprocessing
-
-| Raw field | Meaning | Handling |
-|---|---|---|
-| `age` | Age in days in the source file | Converted to years using 365.25 days |
-| `gender` | Dataset gender code | One-hot encoded |
-| `height`, `weight` | cm and kg | Used to derive BMI |
-| `ap_hi`, `ap_lo` | Systolic and diastolic pressure | Used to derive pulse pressure and mean arterial pressure |
-| `cholesterol`, `gluc` | Ordinal dataset categories | One-hot encoded |
-| `smoke`, `alco`, `active` | Binary lifestyle indicators | Imputed and retained as binary features |
-| `cardio` | Cross-sectional target label (0/1) | Prediction target; not a future event |
-
-The cleaning pipeline keeps rows with a valid binary target, systolic pressure 70–250, diastolic pressure 40–180, systolic greater than diastolic, height 120–220 cm, weight 35–200 kg, and BMI 12–60. These are dataset quality filters, not clinical reference ranges. The identifier is retained in the Stage-1 audit ledger but excluded from model features. All learned imputers, scalers and encoders are fitted within each training fold.
-
-Important limitations:
-
-- Cross-sectional association is not future-event prediction.
-- Dataset labels may contain measurement, selection and labelling bias.
-- No external-site or temporal validation is reported.
-- The dataset does not establish a representative clinical population.
-- Calibration and subgroup summaries are exploratory, not clinical calibration or fairness certification.
-- The model has not undergone prospective evaluation, clinical validation, or regulatory review.
-- A negative output must never be used to rule out disease or delay care.
-
-## Repository artifacts
-
-| Artifact | Purpose |
+| Path | Purpose |
 |---|---|
-| `artifacts/mlp_state_dict.pt` | Deployed MLP weights |
-| `artifacts/preprocessing.json` | Saved feature preprocessing schema |
-| `artifacts/metrics.json` | MLP evaluation and operating points |
-| `artifacts/mlp_oof_predictions.csv` | Development OOF MLP scores |
-| `artifacts/tree_stage2_cascade_comparison.json` | Full XGBoost/LightGBM comparison, paired bootstrap results and thresholds |
-| `artifacts/tree_stage2_cascade_comparison.csv` | Tabular two-tier results |
-| `artifacts/tree_stage2_cascade_folds.csv` | Stage-2 outer-fold row counts |
-| `artifacts/stage1_prediction_dataset.csv` | Stage-1 prediction/routing ledger, original features, target and split |
-| `artifacts/mlp_matched_recall_audit.*` | Earlier matched-recall MLP cascade audit |
-
-Only development OOF borderline rows are marked Stage-2 training eligible in the prediction ledger. The untouched test rows are for evaluation only.
+| `app.py` | Streamlit research interface and deployed MLP inference |
+| `model.py` | PyTorch MLP definition |
+| `train.py` | Baseline training orchestration |
+| `preprocessing.py` | Data cleaning, feature engineering and fold-fitted transformations |
+| `evaluation.py` | Classification metrics and evaluation utilities |
+| `tree_stage2_cascade.py` | XGBoost/LightGBM selective cascade research |
+| `bayesian_mlp_cascade.py` | Earlier Bayesian MLP cascade research |
+| `explainability.py` | Integrated Gradients and explanation diagnostics |
+| `tests/` | Unit and regression tests |
+| `artifacts/metrics.json` | Published baseline MLP evaluation |
+| `artifacts/tree_stage2_cascade_comparison.json` | Two-tier model comparison results |
+| `artifacts/tree_stage2_cascade_comparison.csv` | Tabular two-tier comparison |
+| `artifacts/tree_stage2_cascade_folds.csv` | Stage-2 outer-fold summaries |
+| `artifacts/stage1_prediction_dataset.csv` | Stage-1 prediction and routing ledger |
 
 ## Run locally
 
-Python 3.11 is used in the GitHub Actions workflow.
-
 ```bash
-git clone https://github.com/Harshithpatali/cardiorisk-ai.git
-cd cardiorisk-ai
+python -m venv .venv
+# Activate the environment, then:
 pip install -r requirements.txt
 python validate_data.py
 python train.py
@@ -237,18 +150,23 @@ pytest -q
 streamlit run app.py
 ```
 
-The training and cascade scripts write their research outputs under `artifacts/`. The repository workflow runs compilation, data validation, model training, cross-validation studies, cascade comparisons, tests and artifact validation.
+The research cascade requires the baseline OOF artifact `artifacts/mlp_oof_predictions.csv` produced by the training workflow.
 
-## Quality checks and workflow
+## Reproducibility and CI
 
-Latest completed workflow: [GitHub Actions run #89](https://github.com/Harshithpatali/cardiorisk-ai/actions/runs/44881293843).
+The GitHub Actions workflow compiles modules, validates the source data, trains/evaluates the baseline, runs cross-validation and research experiments, runs automated tests, validates artifacts, and publishes generated artifacts. Check the [latest workflow runs](https://github.com/Harshithpatali/cardiorisk-ai/actions).
 
-The workflow validates that both tree candidates contain all five recall targets (95%, 97%, 98%, 99%, 99.5%), checks that the Stage-1 prediction ledger exists, and runs the automated test suite. The cascade prediction function also validates that direct-positive masks, routed masks and full-length Stage-2 scores are aligned and disjoint.
+## Limitations and promotion criteria
+
+- The data is cross-sectional and may contain selection, measurement, and population biases.
+- There is no prospective or external cohort validation.
+- High recall on this dataset does not guarantee low false-negative rates in a new population.
+- Calibration in a test subset does not establish clinical probability calibration.
+- The Stage-1 gate creates an irrecoverable blind spot below its threshold.
+- Test-set comparisons are single-split estimates; bootstrap intervals are conditional on fitted models and frozen thresholds and do not capture all training/selection uncertainty.
+- A production candidate would require a frozen model bundle, external validation, subgroup analysis, calibration monitoring, threshold governance, and domain-expert review.
+- No candidate in this experiment is approved for clinical or production use.
 
 ## Project status
 
-- **Deployed inference:** PyTorch MLP.
-- **Research candidate:** LightGBM selective Stage 2, marginally ahead of XGBoost in the current test comparison.
-- **Promotion decision:** Not promoted. At 99.5% recall it matches MLP false negatives but saves only five false positives; at 99% it adds false negatives.
-- **Next scientific requirement before any promotion:** independent external/temporal validation and a pre-specified, defensible false-negative cost policy. No test-set retuning.
-
+The deployed Streamlit inference path remains the original PyTorch MLP. The two-tier cascade is a completed research comparison, not a deployed classifier. The current results do not demonstrate a meaningful enough reduction in false positives without a recall cost to justify replacing the MLP.
