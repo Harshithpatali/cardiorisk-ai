@@ -669,7 +669,13 @@ with cascade_tab:
         st.markdown("#### Performance profile")
         st.bar_chart(compare.set_index("model")[["recall", "precision", "specificity"]])
         st.markdown("#### Error counts — false negatives deserve priority")
-        st.bar_chart(compare.set_index("model")[["fp", "fn"]])
+        error_fp, error_fn = st.columns(2)
+        with error_fp:
+            st.caption("False positives")
+            st.bar_chart(compare.set_index("model")[["fp"]])
+        with error_fn:
+            st.caption("False negatives")
+            st.bar_chart(compare.set_index("model")[["fn"]])
         for label, row, matched_baseline in [
             ("XGBoost", xgb, baseline_xgb),
             ("LightGBM", light, baseline_light),
