@@ -163,9 +163,11 @@ def run():
         final.fit(fit_x, routed_y)
         test_x = transform_frame(x_test.loc[test_route].reset_index(drop=True), prep2)
         s2_test = final.predict_proba(test_x)[:, 1] if len(test_x) else np.array([])
+        stage2_oof_full = np.zeros(len(y_dev), dtype=float)
+        stage2_oof_full[dev_route] = s2_oof
         for ti, floor in enumerate(RECALL_FLOORS):
             choice = choose_cascade_threshold(y_dev, p1_dev,
-                np.where(dev_route, s2_oof, 0.0), gate, floor)
+                stage2_oof_full, gate, floor)
             # Build the end-to-end Stage-2 score vector. Direct positives bypass Stage 2.
             final_scores = np.zeros(len(y_test), dtype=float)
             final_scores[test_direct] = 1.0
