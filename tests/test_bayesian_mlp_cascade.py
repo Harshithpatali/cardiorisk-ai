@@ -44,3 +44,20 @@ def test_mc_dropout_returns_mean_and_uncertainty():
     assert np.isfinite(std).all()
     assert ((mean >= 0.0) & (mean <= 1.0)).all()
     assert (std >= 0.0).all()
+
+
+def test_paired_bootstrap_differences_are_finite_and_paired():
+    from bayesian_mlp_cascade import paired_bootstrap_differences
+
+    y = np.array([0, 0, 0, 1, 1, 1, 1, 0])
+    baseline = np.array([1, 0, 0, 1, 0, 1, 1, 0])
+    cascade = np.array([0, 0, 0, 1, 1, 1, 0, 0])
+    result = paired_bootstrap_differences(
+        y, baseline, cascade, n_bootstrap=100, seed=19
+    )
+    assert set(result) == {"precision", "recall", "specificity", "f1"}
+    for values in result.values():
+        assert np.isfinite(values["difference_cascade_minus_baseline"])
+        lower, upper = values["paired_bootstrap_95_ci"]
+        assert lower <= upper
+        assert values["bootstrap_replicates"] == 100
