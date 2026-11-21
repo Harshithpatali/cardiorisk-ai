@@ -69,6 +69,9 @@ jobs:
       - name: Build development-only MLP operating-point frontier
         run: python operating_point_analysis.py
 
+      - name: Run Bayesian two-stage MLP cascade experiment
+        run: python bayesian_mlp_cascade.py
+
       - name: Run automated tests
         run: python -m pytest -q
 
@@ -127,6 +130,12 @@ jobs:
           assert (artifact_dir / "mlp_recall_study_folds.csv").stat().st_size > 0
           assert (artifact_dir / "mlp_recall_study_oof.csv").stat().st_size > 0
           assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
+          cascade = json.loads((artifact_dir / "mlp_bayesian_cascade.json").read_text())
+          assert cascade["status"] == "research_experiment_only_not_promoted_to_deployed_inference"
+          assert len(cascade["experiments"]) == 3
+          assert len(cascade["recall_floors"]) == 3
+          assert (artifact_dir / "mlp_bayesian_cascade_folds.csv").stat().st_size > 0
+          assert (artifact_dir / "mlp_bayesian_cascade_summary.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
 
@@ -158,6 +167,9 @@ jobs:
           git add artifacts/mlp_recall_study.json
           git add artifacts/mlp_recall_study_folds.csv
           git add artifacts/mlp_recall_study_oof.csv
+          git add artifacts/mlp_bayesian_cascade.json
+          git add artifacts/mlp_bayesian_cascade_folds.csv
+          git add artifacts/mlp_bayesian_cascade_summary.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
