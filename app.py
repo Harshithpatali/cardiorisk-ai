@@ -857,13 +857,16 @@ with specificity_tab:
                 "Recall": row["recall"],
                 "Specificity": row["specificity"],
                 "Precision": row["precision"],
-                "PR-AUC": row.get("pr_auc"),
-                "ROC-AUC": row.get("roc_auc"),
+                "PR-AUC": row.get("pr_auc", float("nan")),
+                "ROC-AUC": row.get("roc_auc", float("nan")),
                 "Specificity CI low": row["specificity_fold_ci95"]["ci95_low"],
                 "Specificity CI high": row["specificity_fold_ci95"]["ci95_high"],
             } for row in selected_rows]).sort_values("Specificity", ascending=False)
+            # Older specificity artifacts do not contain PR-AUC/ROC-AUC.
+            # Keep those optional columns as NaN instead of indexing absent keys.
             st.dataframe(comparison.style.format({
-                column: "{:.3f}" for column in comparison.columns if column != "Candidate"
+                column: (lambda value: "—" if pd.isna(value) else f"{value:.3f}")
+                for column in comparison.columns if column != "Candidate"
             }), use_container_width=True, hide_index=True)
             st.bar_chart(comparison.set_index("Candidate")[["Specificity", "Recall", "Precision"]])
             best = comparison.iloc[0]
