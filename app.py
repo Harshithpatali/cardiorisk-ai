@@ -852,15 +852,16 @@ with specificity_tab:
             )
             selected_rows = [row for row in rows if row["recall_floor"] == chosen_floor]
             comparison = pd.DataFrame([{
-                "Candidate": row["candidate"].replace("_", " ").title(),
+                "Candidate": row.get("candidate", "Unknown candidate").replace("_", " ").title(),
                 "Threshold": row["threshold"],
                 "Recall": row["recall"],
                 "Specificity": row["specificity"],
                 "Precision": row["precision"],
+                # Older specificity artifacts may not include ranking metrics or CIs.
                 "PR-AUC": row.get("pr_auc", float("nan")),
                 "ROC-AUC": row.get("roc_auc", float("nan")),
-                "Specificity CI low": row["specificity_fold_ci95"]["ci95_low"],
-                "Specificity CI high": row["specificity_fold_ci95"]["ci95_high"],
+                "Specificity CI low": row.get("specificity_fold_ci95", {}).get("ci95_low", float("nan")),
+                "Specificity CI high": row.get("specificity_fold_ci95", {}).get("ci95_high", float("nan")),
             } for row in selected_rows]).sort_values("Specificity", ascending=False)
             # Older specificity artifacts do not contain PR-AUC/ROC-AUC.
             # Keep those optional columns as NaN instead of indexing absent keys.
