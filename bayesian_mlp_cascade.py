@@ -199,7 +199,7 @@ def run():
             stage2_x, stage2_y, final_epochs, RANDOM_SEED + floor_index * 10000
         )
         for row in fold_rows:
-            all_fold_rows.append({"stage1_recall_floor": recall_floor, **row})
+            all_fold_rows.append({"cascade_recall_target": recall_floor, **row})
 
         stage1_dev_tp = int(np.sum(dev_gate & (y_train == 1)))
         bayes_choice = bayesian_precision_threshold(
