@@ -174,5 +174,9 @@ jobs:
             echo "No artifact changes"
           else
             git commit -m "chore: publish cross-fitted MLP artifacts [skip ci]"
+            # Rebase the generated-artifact commit onto the latest main so
+            # source/documentation commits made during training are preserved.
+            git fetch origin main
+            git rebase origin/main
             git push origin HEAD:main
           fi
