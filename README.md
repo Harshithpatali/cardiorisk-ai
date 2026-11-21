@@ -64,7 +64,7 @@ The table below shows the LightGBM cascade against a single-stage MLP baseline m
 |---:|---|---:|---:|---:|---:|---:|
 | 99.0% | Matched MLP | 99.44% | 51.32% | 7.62% | 6,402 | 38 |
 | 99.0% | LightGBM cascade | 99.26% | 52.00% | 10.27% | 6,218 | 50 |
-| 99.5% | Matched MLP | 99.82% | 4? | 4.17% | 6,641 | 12 |
+| 99.5% | Matched MLP | 99.82% | 50.50% | 4.17% | 6,641 | 12 |
 | 99.5% | LightGBM cascade | 99.82% | 50.51% | 4.24% | 6,636 | 12 |
 
 At the 99.5% point, the matched MLP precision is **50.50%** (not a high-precision result); LightGBM improves it to **50.51%**, with the same 12 false negatives and five fewer false positives. This is a very small gain and is not enough evidence to replace the MLP.
