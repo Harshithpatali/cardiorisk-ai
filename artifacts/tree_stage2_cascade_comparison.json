@@ -9,7 +9,7 @@
   "routing": "Below gate: negative; gate <= confidence < 0.50: Stage 2; confidence >= 0.50: direct positive bypass.",
   "stage2": "XGBoost and LightGBM trained only on Stage-1 OOF borderline development rows; each outer fold uses sigmoid calibration fitted inside that fold.",
   "dataset_artifact": "stage1_prediction_dataset.csv contains original features, actual labels, Stage-1 prediction/confidence, split and route. Only development OOF borderline rows are Stage-2 training eligible.",
-  "threshold_selection": "Beta(1,1) posterior precision lower 95% bound subject to end-to-end OOF recall floors of 95%, 97%, and 98%.",
+  "threshold_selection": "Beta(1,1) posterior precision lower 95% bound subject to end-to-end OOF recall floors of 95%, 97%, 98%, 99%, and 99.5%.",
   "comparison": "Single-stage MLP matched to cascade OOF recall; both evaluated on identical untouched test rows.",
   "bootstrap": "2,000 paired test-row bootstrap resamples; conditional on fitted models and selected thresholds.",
   "models": [
@@ -192,6 +192,120 @@
               "bootstrap_replicates": 2000
             }
           }
+        },
+        {
+          "model": "xgboost",
+          "recall_target": 0.99,
+          "cascade_oof_recall": 0.9900154741728686,
+          "baseline_oof_recall": 0.9900154741728686,
+          "stage2_threshold": 0.14766095936555287,
+          "bayesian_precision_oof_mean": 0.5177549565518968,
+          "bayesian_precision_oof_lower_95": 0.5141468557536433,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.188364230393774,
+          "baseline_test_precision": 0.5132770295975043,
+          "cascade_test_precision": 0.5184672206832872,
+          "baseline_test_recall": 0.9941055113468906,
+          "cascade_test_recall": 0.9929266136162688,
+          "baseline_test_specificity": 0.07691197691197692,
+          "cascade_test_specificity": 0.09696969696969697,
+          "baseline_test_f1": 0.6770033619348688,
+          "cascade_test_f1": 0.681225356384592,
+          "baseline_test_false_positives": 6397,
+          "cascade_test_false_positives": 6258,
+          "baseline_test_false_negatives": 40,
+          "cascade_test_false_negatives": 48,
+          "paired_bootstrap_differences": {
+            "precision": {
+              "difference_cascade_minus_baseline": 0.0051901910857828915,
+              "paired_bootstrap_95_ci": [
+                0.0038813647427275526,
+                0.006516324544388218
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "recall": {
+              "difference_cascade_minus_baseline": -0.0011788977306218529,
+              "paired_bootstrap_95_ci": [
+                -0.002804107399982092,
+                0.000442415886618111
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "specificity": {
+              "difference_cascade_minus_baseline": 0.020057720057720052,
+              "paired_bootstrap_95_ci": [
+                0.015330662455592265,
+                0.024715050088808376
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "f1": {
+              "difference_cascade_minus_baseline": 0.004221994449723265,
+              "paired_bootstrap_95_ci": [
+                0.0029043316164480888,
+                0.005560765232748224
+              ],
+              "bootstrap_replicates": 2000
+            }
+          }
+        },
+        {
+          "model": "xgboost",
+          "recall_target": 0.995,
+          "cascade_oof_recall": 0.9950261587208017,
+          "baseline_oof_recall": 0.9950261587208017,
+          "stage2_threshold": 0.12022240740992045,
+          "bayesian_precision_oof_mean": 0.5087114576858601,
+          "bayesian_precision_oof_lower_95": 0.5051425107042748,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.188364230393774,
+          "baseline_test_precision": 0.5049571375326127,
+          "cascade_test_precision": 0.5051077473715606,
+          "baseline_test_recall": 0.9982316534040672,
+          "cascade_test_recall": 0.9982316534040672,
+          "baseline_test_specificity": 0.0417027417027417,
+          "cascade_test_specificity": 0.04227994227994228,
+          "baseline_test_f1": 0.6706598683233503,
+          "cascade_test_f1": 0.670792691983958,
+          "baseline_test_false_positives": 6641,
+          "cascade_test_false_positives": 6637,
+          "baseline_test_false_negatives": 12,
+          "cascade_test_false_negatives": 12,
+          "paired_bootstrap_differences": {
+            "precision": {
+              "difference_cascade_minus_baseline": 0.00015060983894787938,
+              "paired_bootstrap_95_ci": [
+                3.7365065862032806e-05,
+                0.00030531612048660396
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "recall": {
+              "difference_cascade_minus_baseline": 0.0,
+              "paired_bootstrap_95_ci": [
+                0.0,
+                0.0
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "specificity": {
+              "difference_cascade_minus_baseline": 0.0005772005772005789,
+              "paired_bootstrap_95_ci": [
+                0.00014320390116051053,
+                0.0011678874746486548
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "f1": {
+              "difference_cascade_minus_baseline": 0.0001328236606076283,
+              "paired_bootstrap_95_ci": [
+                3.310627032356572e-05,
+                0.00026688921034282717
+              ],
+              "bootstrap_replicates": 2000
+            }
+          }
         }
       ]
     },
@@ -370,6 +484,120 @@
               "paired_bootstrap_95_ci": [
                 0.003770140947283043,
                 0.007522754985355353
+              ],
+              "bootstrap_replicates": 2000
+            }
+          }
+        },
+        {
+          "model": "lightgbm",
+          "recall_target": 0.99,
+          "cascade_oof_recall": 0.9900523174416034,
+          "baseline_oof_recall": 0.9900523174416034,
+          "stage2_threshold": 0.13362148445036742,
+          "bayesian_precision_oof_mean": 0.5182235421166307,
+          "bayesian_precision_oof_lower_95": 0.5146139875629999,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.18788663807296588,
+          "baseline_test_precision": 0.5131558935361217,
+          "cascade_test_precision": 0.5199938243013741,
+          "baseline_test_recall": 0.9944002357795462,
+          "cascade_test_recall": 0.9926318891836133,
+          "baseline_test_specificity": 0.0761904761904762,
+          "cascade_test_specificity": 0.10274170274170275,
+          "baseline_test_f1": 0.6769662921348315,
+          "cascade_test_f1": 0.6824721377912867,
+          "baseline_test_false_positives": 6402,
+          "cascade_test_false_positives": 6218,
+          "baseline_test_false_negatives": 38,
+          "cascade_test_false_negatives": 50,
+          "paired_bootstrap_differences": {
+            "precision": {
+              "difference_cascade_minus_baseline": 0.006837930765252409,
+              "paired_bootstrap_95_ci": [
+                0.005340278281322644,
+                0.008341018099462152
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "recall": {
+              "difference_cascade_minus_baseline": -0.0017683465959328348,
+              "paired_bootstrap_95_ci": [
+                -0.003393894723658372,
+                -0.00014775359141437627
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "specificity": {
+              "difference_cascade_minus_baseline": 0.026551226551226548,
+              "paired_bootstrap_95_ci": [
+                0.02148823411820322,
+                0.03183754274142333
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "f1": {
+              "difference_cascade_minus_baseline": 0.005505845656455177,
+              "paired_bootstrap_95_ci": [
+                0.004038317710328673,
+                0.006912314268705021
+              ],
+              "bootstrap_replicates": 2000
+            }
+          }
+        },
+        {
+          "model": "lightgbm",
+          "recall_target": 0.995,
+          "cascade_oof_recall": 0.9950261587208017,
+          "baseline_oof_recall": 0.9950261587208017,
+          "stage2_threshold": 0.08223416579147674,
+          "bayesian_precision_oof_mean": 0.5087785396729712,
+          "bayesian_precision_oof_lower_95": 0.5052093643189693,
+          "stage2_routed_test_rows": 6487,
+          "stage2_test_brier_score": 0.18788663807296588,
+          "baseline_test_precision": 0.5049571375326127,
+          "cascade_test_precision": 0.5051454138702461,
+          "baseline_test_recall": 0.9982316534040672,
+          "cascade_test_recall": 0.9982316534040672,
+          "baseline_test_specificity": 0.0417027417027417,
+          "cascade_test_specificity": 0.04242424242424243,
+          "baseline_test_f1": 0.6706598683233503,
+          "cascade_test_f1": 0.6708259061200238,
+          "baseline_test_false_positives": 6641,
+          "cascade_test_false_positives": 6636,
+          "baseline_test_false_negatives": 12,
+          "cascade_test_false_negatives": 12,
+          "paired_bootstrap_differences": {
+            "precision": {
+              "difference_cascade_minus_baseline": 0.00018827633763340845,
+              "paired_bootstrap_95_ci": [
+                3.757229550354069e-05,
+                0.0003740878391301993
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "recall": {
+              "difference_cascade_minus_baseline": 0.0,
+              "paired_bootstrap_95_ci": [
+                0.0,
+                0.0
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "specificity": {
+              "difference_cascade_minus_baseline": 0.0007215007215007271,
+              "paired_bootstrap_95_ci": [
+                0.00014394650954976904,
+                0.001433337361992203
+              ],
+              "bootstrap_replicates": 2000
+            },
+            "f1": {
+              "difference_cascade_minus_baseline": 0.0001660377966734572,
+              "paired_bootstrap_95_ci": [
+                3.3189990977772196e-05,
+                0.0003314250085584003
               ],
               "bootstrap_replicates": 2000
             }
