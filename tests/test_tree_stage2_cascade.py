@@ -58,3 +58,15 @@ def test_cascade_predictions_reject_overlapping_routes():
             np.array([0.9, 0.8]),
             0.5,
         )
+
+
+def test_cascade_predictions_reject_invalid_threshold_and_scores():
+    import pytest
+    from tree_stage2_cascade import build_cascade_predictions
+
+    direct = np.array([False, True])
+    routed = np.array([True, False])
+    with pytest.raises(ValueError, match="threshold"):
+        build_cascade_predictions(direct, routed, np.array([0.2, 0.0]), 1.2)
+    with pytest.raises(ValueError, match="finite"):
+        build_cascade_predictions(direct, routed, np.array([np.nan, 0.0]), 0.5)
