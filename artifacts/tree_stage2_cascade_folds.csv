@@ -1,0 +1,11 @@
+fold,training_rows,validation_rows,model
+1,42472,10618,xgboost
+2,42472,10618,xgboost
+3,42472,10618,xgboost
+4,42472,10618,xgboost
+5,42472,10618,xgboost
+1,42472,10618,lightgbm
+2,42472,10618,lightgbm
+3,42472,10618,lightgbm
+4,42472,10618,lightgbm
+5,42472,10618,lightgbm
