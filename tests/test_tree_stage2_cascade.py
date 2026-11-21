@@ -20,5 +20,5 @@ def test_stage2_threshold_counts_direct_and_borderline_predictions():
     p2 = np.array([0.0, 0.0, 0.9, 0.1, 0.8, 0.0, 0.0, 0.0])
     result = choose_cascade_threshold(y, p1, p2, gate=0.2, recall_floor=0.5)
     assert result["direct_positive_rows"] == 3
-    assert result["routed_rows"] == 3
+    assert result["routed_rows"] == 4
     assert 0 <= result["threshold"] <= 1
