@@ -1,0 +1,787 @@
+{
+  "experiment": "Two-stage PyTorch MLP cascade with Bayesian precision decision",
+  "status": "research_experiment_only_not_promoted_to_deployed_inference",
+  "method": {
+    "stage1": "Existing PyTorch MLP; recall-constrained threshold selected from saved development OOF predictions.",
+    "stage2": "Second PyTorch MLP trained only on Stage-1-positive OOF development rows; precision-oriented unweighted BCE objective.",
+    "bayesian_component": "Beta-Binomial posterior for Stage-2 precision with Beta(1,1) prior. Threshold maximizes the 95% posterior lower credible bound subject to the overall cascade OOF recall floor.",
+    "uncertainty": "Monte Carlo dropout (30 stochastic passes) estimates an approximate predictive mean and epistemic uncertainty for Stage 2.",
+    "leakage_controls": "Stage-1 OOF scores determine development gating; Stage-2 predictions are cross-fitted on gated development rows; all thresholds are selected without the untouched test set.",
+    "limitation": "Bayesian credible intervals quantify binomial uncertainty conditional on this dataset and selected threshold; they do not establish clinical validity or population generalisability."
+  },
+  "baseline_mlp_test_metrics": {
+    "recall": 0.9714117300324197,
+    "precision": 0.5490130757058382,
+    "f1": 0.7015378066301282,
+    "roc_auc": 0.8023695227718217,
+    "pr_auc": 0.780634151928509,
+    "brier_score": 0.18209981332882602,
+    "ece_10_bins": 0.04436910198091564,
+    "reliability_bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.1,
+        "count": 92,
+        "mean_score": 0.08290046870546497,
+        "observed_rate": 0.03260869565217391
+      },
+      {
+        "bin_lower": 0.1,
+        "bin_upper": 0.2,
+        "count": 983,
+        "mean_score": 0.16042159575806023,
+        "observed_rate": 0.08748728382502544
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.30000000000000004,
+        "count": 1809,
+        "mean_score": 0.250411758408354,
+        "observed_rate": 0.20729684908789386
+      },
+      {
+        "bin_lower": 0.30000000000000004,
+        "bin_upper": 0.4,
+        "count": 2274,
+        "mean_score": 0.3514233867170104,
+        "observed_rate": 0.2884784520668426
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.5,
+        "count": 1657,
+        "mean_score": 0.4456187434310142,
+        "observed_rate": 0.38805069402534703
+      },
+      {
+        "bin_lower": 0.5,
+        "bin_upper": 0.6000000000000001,
+        "count": 1306,
+        "mean_score": 0.5481077538058732,
+        "observed_rate": 0.5045941807044411
+      },
+      {
+        "bin_lower": 0.6000000000000001,
+        "bin_upper": 0.7000000000000001,
+        "count": 882,
+        "mean_score": 0.6437894807380884,
+        "observed_rate": 0.5986394557823129
+      },
+      {
+        "bin_lower": 0.7000000000000001,
+        "bin_upper": 0.8,
+        "count": 726,
+        "mean_score": 0.7526352724096335,
+        "observed_rate": 0.7121212121212122
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 0.9,
+        "count": 3938,
+        "mean_score": 0.8543378865131573,
+        "observed_rate": 0.8321482986287455
+      },
+      {
+        "bin_lower": 0.9,
+        "bin_upper": 1.0,
+        "count": 49,
+        "mean_score": 0.9036034175327846,
+        "observed_rate": 0.8571428571428571
+      }
+    ],
+    "accuracy": 0.5910615339749198,
+    "specificity": 0.21861471861471862,
+    "threshold": 0.23495382070541382,
+    "confusion_matrix": [
+      [
+        1515,
+        5415
+      ],
+      [
+        194,
+        6592
+      ]
+    ]
+  },
+  "recall_floors": [
+    0.95,
+    0.97,
+    0.98
+  ],
+  "stage2_cv_folds": 5,
+  "mc_dropout_passes": 30,
+  "experiments": [
+    {
+      "stage1_recall_floor": 0.95,
+      "stage1_threshold": 0.26768285036087036,
+      "stage1_oof_recall": 0.9500036843268734,
+      "stage1_test_metrics": {
+        "recall": 0.955201886236369,
+        "precision": 0.5657676529632539,
+        "f1": 0.71062873430905,
+        "roc_auc": 0.8023695227718217,
+        "pr_auc": 0.780634151928509,
+        "brier_score": 0.18209981332882602,
+        "ece_10_bins": 0.04436910198091564,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 92,
+            "mean_score": 0.08290046870546497,
+            "observed_rate": 0.03260869565217391
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 983,
+            "mean_score": 0.16042159575806023,
+            "observed_rate": 0.08748728382502544
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 1809,
+            "mean_score": 0.250411758408354,
+            "observed_rate": 0.20729684908789386
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 2274,
+            "mean_score": 0.3514233867170104,
+            "observed_rate": 0.2884784520668426
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1657,
+            "mean_score": 0.4456187434310142,
+            "observed_rate": 0.38805069402534703
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 1306,
+            "mean_score": 0.5481077538058732,
+            "observed_rate": 0.5045941807044411
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 882,
+            "mean_score": 0.6437894807380884,
+            "observed_rate": 0.5986394557823129
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 726,
+            "mean_score": 0.7526352724096335,
+            "observed_rate": 0.7121212121212122
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 3938,
+            "mean_score": 0.8543378865131573,
+            "observed_rate": 0.8321482986287455
+          },
+          {
+            "bin_lower": 0.9,
+            "bin_upper": 1.0,
+            "count": 49,
+            "mean_score": 0.9036034175327846,
+            "observed_rate": 0.8571428571428571
+          }
+        ],
+        "accuracy": 0.6151210265383493,
+        "specificity": 0.2821067821067821,
+        "threshold": 0.26768285036087036,
+        "confusion_matrix": [
+          [
+            1955,
+            4975
+          ],
+          [
+            304,
+            6482
+          ]
+        ]
+      },
+      "stage2_training_rows": 45582,
+      "stage2_training_positive_rate": 0.5656838225615375,
+      "stage2_oof_mean_mc_uncertainty": 0.05094733091043379,
+      "bayesian_stage2_threshold_selection": {
+        "threshold": 0.1271781623363495,
+        "tp": 25785,
+        "fp": 19797,
+        "cascade_recall_oof": 0.9500036843268734,
+        "precision_posterior_mean": 0.5656809406809407,
+        "precision_credible_interval_95": [
+          0.5611280659113597,
+          0.5702283565202563
+        ],
+        "precision_lower_credible_bound": 0.5611280659113597
+      },
+      "cascade_test_metrics": {
+        "recall": 0.955201886236369,
+        "precision": 0.5657676529632539,
+        "f1": 0.71062873430905,
+        "roc_auc": 0.7996363576823348,
+        "pr_auc": 0.7776150449756352,
+        "brier_score": 0.18607701138729085,
+        "ece_10_bins": 0.06546930868160138,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 2259,
+            "mean_score": 0.0,
+            "observed_rate": 0.13457281983178399
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 98,
+            "mean_score": 0.19035495042192693,
+            "observed_rate": 0.22448979591836735
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 2968,
+            "mean_score": 0.25166672952673985,
+            "observed_rate": 0.28942048517520214
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 1763,
+            "mean_score": 0.34590927905746977,
+            "observed_rate": 0.4038570618264322
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1109,
+            "mean_score": 0.44850864310432276,
+            "observed_rate": 0.5175834084761046
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 835,
+            "mean_score": 0.5463555657935,
+            "observed_rate": 0.5880239520958084
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 677,
+            "mean_score": 0.6486049051474961,
+            "observed_rate": 0.7163958641063516
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 2895,
+            "mean_score": 0.763358519690848,
+            "observed_rate": 0.8210708117443869
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 1112,
+            "mean_score": 0.8183020205377675,
+            "observed_rate": 0.8651079136690647
+          }
+        ],
+        "accuracy": 0.6151210265383493,
+        "specificity": 0.2821067821067821,
+        "threshold": 0.1271781623363495,
+        "confusion_matrix": [
+          [
+            1955,
+            4975
+          ],
+          [
+            304,
+            6482
+          ]
+        ],
+        "stage1_gate_rows": 11457,
+        "stage1_gate_fraction": 0.8353018372703412,
+        "stage2_mc_dropout_mean_uncertainty": 0.04982493072748184,
+        "stage1_false_negatives": 304,
+        "stage2_false_negatives_among_stage1_positives": 0,
+        "bayesian_precision_posterior": {
+          "prior": {
+            "alpha": 1.0,
+            "beta": 1.0
+          },
+          "credible_level": 0.95,
+          "oof_posterior_mean": 0.5656809406809407,
+          "oof_95_percent_credible_interval": [
+            0.5611280659113597,
+            0.5702283565202563
+          ],
+          "oof_lower_credible_bound": 0.5611280659113597
+        }
+      },
+      "test_stage1_positive_rows": 11457,
+      "test_stage1_true_positives": 6482
+    },
+    {
+      "stage1_recall_floor": 0.97,
+      "stage1_threshold": 0.22460633516311646,
+      "stage1_oof_recall": 0.9700095792498711,
+      "stage1_test_metrics": {
+        "recall": 0.9758325965222517,
+        "precision": 0.5429203902599,
+        "f1": 0.697676868777327,
+        "roc_auc": 0.8023695227718217,
+        "pr_auc": 0.780634151928509,
+        "brier_score": 0.18209981332882602,
+        "ece_10_bins": 0.04436910198091564,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 92,
+            "mean_score": 0.08290046870546497,
+            "observed_rate": 0.03260869565217391
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 983,
+            "mean_score": 0.16042159575806023,
+            "observed_rate": 0.08748728382502544
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 1809,
+            "mean_score": 0.250411758408354,
+            "observed_rate": 0.20729684908789386
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 2274,
+            "mean_score": 0.3514233867170104,
+            "observed_rate": 0.2884784520668426
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1657,
+            "mean_score": 0.4456187434310142,
+            "observed_rate": 0.38805069402534703
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 1306,
+            "mean_score": 0.5481077538058732,
+            "observed_rate": 0.5045941807044411
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 882,
+            "mean_score": 0.6437894807380884,
+            "observed_rate": 0.5986394557823129
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 726,
+            "mean_score": 0.7526352724096335,
+            "observed_rate": 0.7121212121212122
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 3938,
+            "mean_score": 0.8543378865131573,
+            "observed_rate": 0.8321482986287455
+          },
+          {
+            "bin_lower": 0.9,
+            "bin_upper": 1.0,
+            "count": 49,
+            "mean_score": 0.9036034175327846,
+            "observed_rate": 0.8571428571428571
+          }
+        ],
+        "accuracy": 0.581583552055993,
+        "specificity": 0.19552669552669552,
+        "threshold": 0.22460633516311646,
+        "confusion_matrix": [
+          [
+            1355,
+            5575
+          ],
+          [
+            164,
+            6622
+          ]
+        ]
+      },
+      "stage2_training_rows": 48310,
+      "stage2_training_positive_rate": 0.5449803353342993,
+      "stage2_oof_mean_mc_uncertainty": 0.05158120671943018,
+      "bayesian_stage2_threshold_selection": {
+        "threshold": 0.12057501822710037,
+        "tp": 26328,
+        "fp": 21982,
+        "cascade_recall_oof": 0.9700095792498711,
+        "precision_posterior_mean": 0.5449784732571618,
+        "precision_credible_interval_95": [
+          0.5405363329389159,
+          0.549417086373645
+        ],
+        "precision_lower_credible_bound": 0.5405363329389159
+      },
+      "cascade_test_metrics": {
+        "recall": 0.9758325965222517,
+        "precision": 0.5429203902599,
+        "f1": 0.697676868777327,
+        "roc_auc": 0.7999533034015793,
+        "pr_auc": 0.7796042469749975,
+        "brier_score": 0.18329757675603614,
+        "ece_10_bins": 0.045380915066710215,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 1519,
+            "mean_score": 0.0,
+            "observed_rate": 0.10796576695194207
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 604,
+            "mean_score": 0.1871792408360156,
+            "observed_rate": 0.2052980132450331
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 2928,
+            "mean_score": 0.24513874444194506,
+            "observed_rate": 0.2769808743169399
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 1766,
+            "mean_score": 0.3474015486368642,
+            "observed_rate": 0.384484711211778
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1263,
+            "mean_score": 0.4475632023452674,
+            "observed_rate": 0.4901029295328583
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 874,
+            "mean_score": 0.5464236048184489,
+            "observed_rate": 0.6052631578947368
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 619,
+            "mean_score": 0.6486225811845844,
+            "observed_rate": 0.6704361873990307
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 2381,
+            "mean_score": 0.7685311050387001,
+            "observed_rate": 0.8152036959260814
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 1762,
+            "mean_score": 0.8200937768657958,
+            "observed_rate": 0.8535754824063564
+          }
+        ],
+        "accuracy": 0.581583552055993,
+        "specificity": 0.19552669552669552,
+        "threshold": 0.12057501822710037,
+        "confusion_matrix": [
+          [
+            1355,
+            5575
+          ],
+          [
+            164,
+            6622
+          ]
+        ],
+        "stage1_gate_rows": 12197,
+        "stage1_gate_fraction": 0.8892534266550015,
+        "stage2_mc_dropout_mean_uncertainty": 0.05026214197278023,
+        "stage1_false_negatives": 164,
+        "stage2_false_negatives_among_stage1_positives": 0,
+        "bayesian_precision_posterior": {
+          "prior": {
+            "alpha": 1.0,
+            "beta": 1.0
+          },
+          "credible_level": 0.95,
+          "oof_posterior_mean": 0.5449784732571618,
+          "oof_95_percent_credible_interval": [
+            0.5405363329389159,
+            0.549417086373645
+          ],
+          "oof_lower_credible_bound": 0.5405363329389159
+        }
+      },
+      "test_stage1_positive_rows": 12197,
+      "test_stage1_true_positives": 6622
+    },
+    {
+      "stage1_recall_floor": 0.98,
+      "stage1_threshold": 0.20098567008972168,
+      "stage1_oof_recall": 0.9800309483457372,
+      "stage1_test_metrics": {
+        "recall": 0.9861479516651931,
+        "precision": 0.5303534633063877,
+        "f1": 0.6897546897546898,
+        "roc_auc": 0.8023695227718217,
+        "pr_auc": 0.780634151928509,
+        "brier_score": 0.18209981332882602,
+        "ece_10_bins": 0.04436910198091564,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 92,
+            "mean_score": 0.08290046870546497,
+            "observed_rate": 0.03260869565217391
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 983,
+            "mean_score": 0.16042159575806023,
+            "observed_rate": 0.08748728382502544
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 1809,
+            "mean_score": 0.250411758408354,
+            "observed_rate": 0.20729684908789386
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 2274,
+            "mean_score": 0.3514233867170104,
+            "observed_rate": 0.2884784520668426
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1657,
+            "mean_score": 0.4456187434310142,
+            "observed_rate": 0.38805069402534703
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 1306,
+            "mean_score": 0.5481077538058732,
+            "observed_rate": 0.5045941807044411
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 882,
+            "mean_score": 0.6437894807380884,
+            "observed_rate": 0.5986394557823129
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 726,
+            "mean_score": 0.7526352724096335,
+            "observed_rate": 0.7121212121212122
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 3938,
+            "mean_score": 0.8543378865131573,
+            "observed_rate": 0.8321482986287455
+          },
+          {
+            "bin_lower": 0.9,
+            "bin_upper": 1.0,
+            "count": 49,
+            "mean_score": 0.9036034175327846,
+            "observed_rate": 0.8571428571428571
+          }
+        ],
+        "accuracy": 0.5610965296004666,
+        "specificity": 0.14487734487734488,
+        "threshold": 0.20098567008972168,
+        "confusion_matrix": [
+          [
+            1004,
+            5926
+          ],
+          [
+            94,
+            6692
+          ]
+        ]
+      },
+      "stage2_training_rows": 49855,
+      "stage2_training_positive_rate": 0.5335472871326847,
+      "stage2_oof_mean_mc_uncertainty": 0.05157034815414334,
+      "bayesian_stage2_threshold_selection": {
+        "threshold": 0.1269223988056183,
+        "tp": 26600,
+        "fp": 23255,
+        "cascade_recall_oof": 0.9800309483457372,
+        "precision_posterior_mean": 0.5335459413923822,
+        "precision_credible_interval_95": [
+          0.5291657250868393,
+          0.5379236085534835
+        ],
+        "precision_lower_credible_bound": 0.5291657250868393
+      },
+      "cascade_test_metrics": {
+        "recall": 0.9860005894488653,
+        "precision": 0.5303162399936594,
+        "f1": 0.6896871617791063,
+        "roc_auc": 0.8011228766975893,
+        "pr_auc": 0.7782839755816106,
+        "brier_score": 0.18125516866542846,
+        "ece_10_bins": 0.0268995398430104,
+        "reliability_bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 1098,
+            "mean_score": 0.0,
+            "observed_rate": 0.08561020036429873
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 647,
+            "mean_score": 0.18499437509999947,
+            "observed_rate": 0.18238021638330756
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 3031,
+            "mean_score": 0.2466407475377891,
+            "observed_rate": 0.2580006598482349
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 1827,
+            "mean_score": 0.3476321021748424,
+            "observed_rate": 0.3700054734537493
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 1314,
+            "mean_score": 0.44737789415877705,
+            "observed_rate": 0.484779299847793
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 963,
+            "mean_score": 0.5441097388757723,
+            "observed_rate": 0.5856697819314641
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 589,
+            "mean_score": 0.6443415230522739,
+            "observed_rate": 0.6621392190152802
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 1607,
+            "mean_score": 0.7692585675035416,
+            "observed_rate": 0.7990043559427504
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 2638,
+            "mean_score": 0.8302982544203072,
+            "observed_rate": 0.849128127369219
+          },
+          {
+            "bin_lower": 0.9,
+            "bin_upper": 1.0,
+            "count": 2,
+            "mean_score": 0.9146929681301117,
+            "observed_rate": 0.5
+          }
+        ],
+        "accuracy": 0.5610236220472441,
+        "specificity": 0.14487734487734488,
+        "threshold": 0.1269223988056183,
+        "confusion_matrix": [
+          [
+            1004,
+            5926
+          ],
+          [
+            95,
+            6691
+          ]
+        ],
+        "stage1_gate_rows": 12618,
+        "stage1_gate_fraction": 0.9199475065616798,
+        "stage2_mc_dropout_mean_uncertainty": 0.050743307918310165,
+        "stage1_false_negatives": 94,
+        "stage2_false_negatives_among_stage1_positives": 1,
+        "bayesian_precision_posterior": {
+          "prior": {
+            "alpha": 1.0,
+            "beta": 1.0
+          },
+          "credible_level": 0.95,
+          "oof_posterior_mean": 0.5335459413923822,
+          "oof_95_percent_credible_interval": [
+            0.5291657250868393,
+            0.5379236085534835
+          ],
+          "oof_lower_credible_bound": 0.5291657250868393
+        }
+      },
+      "test_stage1_positive_rows": 12618,
+      "test_stage1_true_positives": 6692
+    }
+  ],
+  "test_rows": 13716,
+  "warning": "Portfolio research only. Not clinically validated and not for diagnosis, screening, treatment, or care decisions."
+}
