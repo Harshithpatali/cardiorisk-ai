@@ -610,8 +610,18 @@ with cascade_tab:
                         if float(row["recall_target"]) == float(target))
         light = get_result("lightgbm")
         xgb = get_result("xgboost")
-        baseline = {
-            "model": "Single-stage MLP",
+        baseline_xgb = {
+            "model": "MLP · XGB-matched",
+            "precision": xgb["baseline_test_precision"],
+            "recall": xgb["baseline_test_recall"],
+            "specificity": xgb["baseline_test_specificity"],
+            "f1": xgb["baseline_test_f1"],
+            "fp": xgb["baseline_test_false_positives"],
+            "fn": xgb["baseline_test_false_negatives"],
+            "threshold": None,
+        }
+        baseline_light = {
+            "model": "MLP · LGBM-matched",
             "precision": light["baseline_test_precision"],
             "recall": light["baseline_test_recall"],
             "specificity": light["baseline_test_specificity"],
@@ -620,18 +630,30 @@ with cascade_tab:
             "fn": light["baseline_test_false_negatives"],
             "threshold": None,
         }
-        comparison_rows = [baseline]
-        for name, row in [("XGBoost cascade", xgb), ("LightGBM cascade", light)]:
-            comparison_rows.append({
-                "model": name,
-                "precision": row["cascade_test_precision"],
-                "recall": row["cascade_test_recall"],
-                "specificity": row["cascade_test_specificity"],
-                "f1": row["cascade_test_f1"],
-                "fp": row["cascade_test_false_positives"],
-                "fn": row["cascade_test_false_negatives"],
-                "threshold": row["stage2_threshold"],
-            })
+        comparison_rows = [
+            baseline_xgb,
+            {
+                "model": "XGBoost cascade",
+                "precision": xgb["cascade_test_precision"],
+                "recall": xgb["cascade_test_recall"],
+                "specificity": xgb["cascade_test_specificity"],
+                "f1": xgb["cascade_test_f1"],
+                "fp": xgb["cascade_test_false_positives"],
+                "fn": xgb["cascade_test_false_negatives"],
+                "threshold": xgb["stage2_threshold"],
+            },
+            baseline_light,
+            {
+                "model": "LightGBM cascade",
+                "precision": light["cascade_test_precision"],
+                "recall": light["cascade_test_recall"],
+                "specificity": light["cascade_test_specificity"],
+                "f1": light["cascade_test_f1"],
+                "fp": light["cascade_test_false_positives"],
+                "fn": light["cascade_test_false_negatives"],
+                "threshold": light["stage2_threshold"],
+            },
+        ]
         compare = pd.DataFrame(comparison_rows)
         st.markdown("#### Untouched-test comparison")
         st.caption("All rows use the same held-out test observations. The baseline is matched to each cascade's development OOF recall.")
@@ -648,10 +670,12 @@ with cascade_tab:
         st.bar_chart(compare.set_index("model")[["recall", "precision", "specificity"]])
         st.markdown("#### Error counts — false negatives deserve priority")
         st.bar_chart(compare.set_index("model")[["fp", "fn"]])
-        baseline_fn = int(baseline["fn"])
-        for label, row in [("XGBoost", xgb), ("LightGBM", light)]:
-            delta_fn = int(row["cascade_test_false_negatives"]) - baseline_fn
-            delta_fp = int(row["cascade_test_false_positives"]) - int(baseline["fp"])
+        for label, row, matched_baseline in [
+            ("XGBoost", xgb, baseline_xgb),
+            ("LightGBM", light, baseline_light),
+        ]:
+            delta_fn = int(row["cascade_test_false_negatives"]) - int(matched_baseline["fn"])
+            delta_fp = int(row["cascade_test_false_positives"]) - int(matched_baseline["fp"])
             if delta_fn > 0:
                 st.error(f"{label}: {delta_fn:,} additional false negatives and {abs(delta_fp):,} fewer false positives than the matched MLP. This is not an acceptable trade-off under a false-negative-first policy.")
             elif delta_fn == 0 and delta_fp < 0:
