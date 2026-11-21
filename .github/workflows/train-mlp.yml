@@ -72,6 +72,9 @@ jobs:
       - name: Run Bayesian two-stage MLP cascade experiment
         run: python bayesian_mlp_cascade.py
 
+      - name: Compare XGBoost and LightGBM as second-stage models
+        run: python tree_stage2_cascade.py
+
       - name: Run automated tests
         run: python -m pytest -q
 
@@ -81,66 +84,59 @@ jobs:
           import json
           from pathlib import Path
           import torch
+          import pandas as pd
           from model import CardioMLP
 
           artifact_dir = Path("artifacts")
           metrics = json.loads((artifact_dir / "metrics.json").read_text())
           config = json.loads((artifact_dir / "preprocessing.json").read_text())
           model = CardioMLP(config["input_dim"])
-          weights = torch.load(
-              artifact_dir / "mlp_state_dict.pt",
-              map_location="cpu",
-              weights_only=True,
-          )
+          weights = torch.load(artifact_dir / "mlp_state_dict.pt", map_location="cpu", weights_only=True)
           model.load_state_dict(weights)
           assert metrics["default_operating_point"] == "high_recall"
-          assert "cross_validation" in metrics
-          assert len(metrics["cross_validation"]["folds"]) == 5
-          assert "operating_points" in metrics
-          assert "high_recall" in metrics["operating_points"]
+          assert "cross_validation" in metrics and len(metrics["cross_validation"]["folds"]) == 5
+          assert "operating_points" in metrics and "high_recall" in metrics["operating_points"]
           assert (artifact_dir / "training_history.csv").stat().st_size > 0
           research = json.loads((artifact_dir / "research_validation.json").read_text())
-          assert len(research["models"]) == 4
-          assert len(research["fold_results"]) == 20
+          assert len(research["models"]) == 4 and len(research["fold_results"]) == 20
           assert research["selected_benchmark_reference"] in research["models"]
-          benchmark_oof = __import__("pandas").read_csv(artifact_dir / "benchmark_oof_predictions.csv")
-          assert len(benchmark_oof) == research["development_rows"]
+          assert len(pd.read_csv(artifact_dir / "benchmark_oof_predictions.csv")) == research["development_rows"]
           specificity = json.loads((artifact_dir / "specificity_investigation.json").read_text())
           assert len(specificity["candidates"]) == 18
-          assert (artifact_dir / "specificity_investigation.csv").stat().st_size > 0
-          assert (artifact_dir / "specificity_oof_predictions.csv").stat().st_size > 0
+          for name in ["specificity_investigation.csv", "specificity_oof_predictions.csv"]:
+              assert (artifact_dir / name).stat().st_size > 0
           boosting = json.loads((artifact_dir / "boosting_calibration_study.json").read_text())
-          assert len(boosting["models"]) == 5
-          assert len(boosting["operating_points"]) == 15
+          assert len(boosting["models"]) == 5 and len(boosting["operating_points"]) == 15
           assert len(boosting["fold_results"]) == 10
-          assert (artifact_dir / "boosting_calibration_oof_predictions.csv").stat().st_size > 0
-          assert (artifact_dir / "boosting_calibration_folds.csv").stat().st_size > 0
-          assert (artifact_dir / "boosting_calibration_operating_points.csv").stat().st_size > 0
+          for name in ["boosting_calibration_oof_predictions.csv", "boosting_calibration_folds.csv", "boosting_calibration_operating_points.csv"]:
+              assert (artifact_dir / name).stat().st_size > 0
           assert "deployed_mlp_oof_analysis" in research
           frontier = json.loads((artifact_dir / "mlp_operating_point_frontier.json").read_text())
           variants = json.loads((artifact_dir / "mlp_variant_benchmark.json").read_text())
-          assert len(variants["variants"]) == 3
+          assert len(variants["variants"]) == 3 and len(frontier["rows"]) == 5
           assert (artifact_dir / "mlp_variant_benchmark.csv").stat().st_size > 0
-          assert len(frontier["rows"]) == 5
           assert (artifact_dir / "mlp_operating_point_frontier.csv").stat().st_size > 0
           recall_study = json.loads((artifact_dir / "mlp_recall_study.json").read_text())
-          assert len(recall_study["experiments"]) == 7
-          assert len(recall_study["fold_results"]) == 21
+          assert len(recall_study["experiments"]) == 7 and len(recall_study["fold_results"]) == 21
           assert len(recall_study["recall_floors"]) == 3
-          assert (artifact_dir / "mlp_recall_study_folds.csv").stat().st_size > 0
-          assert (artifact_dir / "mlp_recall_study_oof.csv").stat().st_size > 0
-          assert (artifact_dir / "mlp_oof_predictions.csv").stat().st_size > 0
+          for name in ["mlp_recall_study_folds.csv", "mlp_recall_study_oof.csv", "mlp_oof_predictions.csv"]:
+              assert (artifact_dir / name).stat().st_size > 0
           cascade = json.loads((artifact_dir / "mlp_bayesian_cascade.json").read_text())
           assert cascade["status"] == "research_experiment_only_not_promoted_to_deployed_inference"
-          assert len(cascade["experiments"]) == 3
-          assert len(cascade["recall_floors"]) == 3
-          assert (artifact_dir / "mlp_bayesian_cascade_folds.csv").stat().st_size > 0
-          assert (artifact_dir / "mlp_bayesian_cascade_summary.csv").stat().st_size > 0
+          assert len(cascade["experiments"]) == 3 and len(cascade["recall_floors"]) == 3
+          for name in ["mlp_bayesian_cascade_folds.csv", "mlp_bayesian_cascade_summary.csv"]:
+              assert (artifact_dir / name).stat().st_size > 0
           matched = json.loads((artifact_dir / "mlp_matched_recall_audit.json").read_text())
-          assert matched["status"] == "research_only_not_promoted"
-          assert len(matched["results"]) == 3
+          assert matched["status"] == "research_only_not_promoted" and len(matched["results"]) == 3
           assert all(len(row["paired_bootstrap_differences"]) == 4 for row in matched["results"])
           assert (artifact_dir / "mlp_matched_recall_audit.csv").stat().st_size > 0
+          tree = json.loads((artifact_dir / "tree_stage2_cascade_comparison.json").read_text())
+          assert tree["status"] == "research_only_not_promoted_to_deployed_inference"
+          assert {m["model"] for m in tree["models"]} == {"xgboost", "lightgbm"}
+          assert all(len(m["recall_target_results"]) == 3 for m in tree["models"])
+          for name in ["tree_stage2_cascade_comparison.csv", "tree_stage2_cascade_folds.csv"]:
+              assert (artifact_dir / name).stat().st_size > 0
+          print("Artifact validation passed")
           print(json.dumps(metrics["test"], indent=2))
           PY
 
@@ -149,40 +145,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add artifacts/mlp_state_dict.pt
-          git add artifacts/preprocessing.json
-          git add artifacts/metrics.json
-          git add artifacts/training_history.csv
-          git add artifacts/research_validation.json
-          git add artifacts/benchmark_oof_predictions.csv
-          git add artifacts/specificity_investigation.json
-          git add artifacts/specificity_investigation.csv
-          git add artifacts/specificity_oof_predictions.csv
-          git add artifacts/boosting_calibration_study.json
-          git add artifacts/boosting_calibration_oof_predictions.csv
-          git add artifacts/boosting_calibration_folds.csv
-          git add artifacts/boosting_calibration_operating_points.csv
-          git add artifacts/benchmark_folds.csv
-          git add artifacts/threshold_analysis.csv
-          git add artifacts/mlp_oof_predictions.csv
-          git add artifacts/mlp_operating_point_frontier.json
-          git add artifacts/mlp_operating_point_frontier.csv
-          git add artifacts/mlp_variant_benchmark.json
-          git add artifacts/mlp_variant_benchmark.csv
-          git add artifacts/mlp_recall_study.json
-          git add artifacts/mlp_recall_study_folds.csv
-          git add artifacts/mlp_recall_study_oof.csv
-          git add artifacts/mlp_bayesian_cascade.json
-          git add artifacts/mlp_bayesian_cascade_folds.csv
-          git add artifacts/mlp_bayesian_cascade_summary.csv
-          git add artifacts/mlp_matched_recall_audit.json
-          git add artifacts/mlp_matched_recall_audit.csv
+          git add artifacts/mlp_state_dict.pt artifacts/preprocessing.json artifacts/metrics.json artifacts/training_history.csv
+          git add artifacts/research_validation.json artifacts/benchmark_oof_predictions.csv artifacts/benchmark_folds.csv artifacts/threshold_analysis.csv
+          git add artifacts/specificity_investigation.json artifacts/specificity_investigation.csv artifacts/specificity_oof_predictions.csv
+          git add artifacts/boosting_calibration_study.json artifacts/boosting_calibration_oof_predictions.csv artifacts/boosting_calibration_folds.csv artifacts/boosting_calibration_operating_points.csv
+          git add artifacts/mlp_oof_predictions.csv artifacts/mlp_operating_point_frontier.json artifacts/mlp_operating_point_frontier.csv
+          git add artifacts/mlp_variant_benchmark.json artifacts/mlp_variant_benchmark.csv artifacts/mlp_recall_study.json artifacts/mlp_recall_study_folds.csv artifacts/mlp_recall_study_oof.csv
+          git add artifacts/mlp_bayesian_cascade.json artifacts/mlp_bayesian_cascade_folds.csv artifacts/mlp_bayesian_cascade_summary.csv
+          git add artifacts/mlp_matched_recall_audit.json artifacts/mlp_matched_recall_audit.csv
+          git add artifacts/tree_stage2_cascade_comparison.json artifacts/tree_stage2_cascade_comparison.csv artifacts/tree_stage2_cascade_folds.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
-            git commit -m "chore: publish cross-fitted MLP artifacts [skip ci]"
-            # Rebase the generated-artifact commit onto the latest main so
-            # source/documentation commits made during training are preserved.
+            git commit -m "chore: publish cross-fitted MLP and tree cascade artifacts [skip ci]"
             git fetch origin main
             git rebase origin/main
             git push origin HEAD:main
