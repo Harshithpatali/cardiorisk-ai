@@ -101,7 +101,8 @@ The MLP reference threshold is selected on development OOF predictions to match 
 
 - At the 99% target, XGBoost adds **8 false negatives** and LightGBM adds **12 false negatives** compared with their matched MLP references. They reduce false positives, but this is the wrong trade-off when missed positives are the dominant concern.
 - At the 99.5% target, both cascades match the MLP reference’s **12 false negatives**. LightGBM removes **5 false positives** (6,636 versus 6,641); XGBoost removes 4.
-- The 99.5% result is the most defensible research operating point for the stated preference, but the improvement is very small. It does **not** justify replacing the deployed MLP.
+- For LightGBM at 99.5%, the paired 2,000-resample bootstrap estimates a precision gain of **0.019 percentage points** (95% CI: +0.0038 to +0.0374 pp) and specificity gain of **0.072 percentage points** (95% CI: +0.0144 to +0.1433 pp), with no recall change. These intervals are conditional on the fitted models and frozen thresholds.
+- The 99.5% result is the most defensible research operating point for the stated preference, but the absolute improvement is very small. It does **not** justify replacing the deployed MLP.
 - At lower recall constraints, the cascades also tend to improve precision/specificity while sacrificing test recall. Read the false-negative column before considering any apparent precision gain.
 
 ### Recall profile across all five operating points
