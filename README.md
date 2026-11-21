@@ -113,10 +113,11 @@ xychart-beta
     y-axis "Recall (%)" 94 --> 100
     line [95.70, 97.83, 98.69, 99.44, 99.82]
     line [95.70, 97.83, 98.69, 99.41, 99.82]
+    line [95.02, 97.07, 98.16, 99.29, 99.82]
     line [95.00, 97.04, 98.20, 99.26, 99.82]
 ```
 
-Series order: matched MLP reference (LightGBM-matched), matched MLP reference (XGBoost-matched), LightGBM cascade. The XGBoost cascade follows a similar curve and is available in the machine-readable report.
+Series order: matched MLP reference (LightGBM-matched), matched MLP reference (XGBoost-matched), XGBoost cascade, LightGBM cascade.
 
 ### Error-count comparison at 99.5%
 
