@@ -69,6 +69,26 @@ def stage2_oof_predictions(frame, target, model_name, seed):
     return oof, rows
 
 
+def build_cascade_predictions(test_direct, test_route, stage2_scores_full, threshold):
+    """Combine full-length routing masks and Stage-2 scores safely."""
+    direct = np.asarray(test_direct, dtype=bool)
+    routed = np.asarray(test_route, dtype=bool)
+    scores = np.asarray(stage2_scores_full, dtype=float)
+    if direct.ndim != 1 or routed.ndim != 1 or scores.ndim != 1:
+        raise ValueError("Cascade masks and scores must be one-dimensional.")
+    if not (len(direct) == len(routed) == len(scores)):
+        raise ValueError(
+            "Cascade masks and Stage-2 scores must align to the complete row set."
+        )
+    if np.any(direct & routed):
+        raise ValueError("Direct-positive and Stage-2-routed masks must be disjoint.")
+    if not np.isfinite(scores).all():
+        raise ValueError("Stage-2 scores must be finite.")
+    if not 0.0 <= float(threshold) <= 1.0:
+        raise ValueError("Stage-2 threshold must be between 0 and 1.")
+    return (direct | (routed & (scores >= float(threshold)))).astype(int)
+
+
 def choose_cascade_threshold(y, stage1_oof, stage2_oof, gate, recall_floor):
     direct = stage1_oof >= ROUTE_CEILING
     routed = (stage1_oof >= gate) & ~direct
@@ -193,7 +213,7 @@ def run():
             final_scores = np.zeros(len(y_test), dtype=float)
             final_scores[test_direct] = 1.0
             final_scores[np.flatnonzero(test_route)] = s2_test
-            cascade_pred = (test_direct | (test_route & (final_scores >= choice["threshold"]))).astype(int)
+            cascade_pred = build_cascade_predictions(test_direct, test_route, final_scores, choice["threshold"])
             cascade_metrics = evaluate_predictions(y_test, cascade_pred.astype(float), 0.5)
             baseline_threshold, baseline_recall = select_recall_threshold(y_dev, p1_dev, choice["cascade_recall_oof"])
             baseline_metrics = evaluate_predictions(y_test, p1_test, baseline_threshold)
