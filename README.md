@@ -76,6 +76,19 @@ streamlit run app.py
 
 Upload the original CSV to `data/cardio_train.csv`. See [data/README.md](data/README.md) for the required schema.
 
+
+## Bayesian two-stage MLP cascade experiment
+
+`bayesian_mlp_cascade.py` evaluates a research-only cascade without changing the deployed Streamlit inference path:
+
+1. Stage 1 reuses the existing high-recall PyTorch MLP and selects 95%, 97%, and 98% recall operating points using development OOF predictions.
+2. Stage 2 is a second PyTorch MLP trained only on Stage-1-positive development rows. Its unweighted loss and a separate threshold are intended to reduce false positives.
+3. Stage 2 uses 30-pass Monte Carlo dropout to report a predictive mean and an approximate epistemic-uncertainty estimate.
+4. A Bayesian Beta-Binomial decision layer starts with a Beta(1,1) prior for precision. It selects the Stage-2 threshold that maximizes the 95% posterior lower credible bound while satisfying the requested overall cascade recall floor.
+5. The complete cascade is evaluated once on the untouched test partition. Results are written to `artifacts/mlp_bayesian_cascade.json`, `artifacts/mlp_bayesian_cascade_summary.csv`, and `artifacts/mlp_bayesian_cascade_folds.csv`.
+
+The Bayesian interval is conditional on the sampled dataset and selected threshold; it is not a clinical confidence statement. Because Stage 2 sees the same tabular variables as Stage 1, it is a learned second-pass filter—not an independent confirmatory medical test. The cascade is an experiment and is not promoted into deployed inference automatically.
+
 ## Limitations
 
 The public dataset is cross-sectional. There is no external or temporal validation, clinical validation, or independent population replication. Internal cross-validation and subgroup diagnostics do not establish fairness or generalisability. Calibration metrics are internal research diagnostics, not a clinical calibration study. A negative result must never be used to rule out disease or delay professional medical care.
