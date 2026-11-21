@@ -136,6 +136,11 @@ jobs:
           assert len(cascade["recall_floors"]) == 3
           assert (artifact_dir / "mlp_bayesian_cascade_folds.csv").stat().st_size > 0
           assert (artifact_dir / "mlp_bayesian_cascade_summary.csv").stat().st_size > 0
+          matched = json.loads((artifact_dir / "mlp_matched_recall_audit.json").read_text())
+          assert matched["status"] == "research_only_not_promoted"
+          assert len(matched["results"]) == 3
+          assert all(len(row["paired_bootstrap_differences"]) == 4 for row in matched["results"])
+          assert (artifact_dir / "mlp_matched_recall_audit.csv").stat().st_size > 0
           print(json.dumps(metrics["test"], indent=2))
           PY
 
@@ -170,6 +175,8 @@ jobs:
           git add artifacts/mlp_bayesian_cascade.json
           git add artifacts/mlp_bayesian_cascade_folds.csv
           git add artifacts/mlp_bayesian_cascade_summary.csv
+          git add artifacts/mlp_matched_recall_audit.json
+          git add artifacts/mlp_matched_recall_audit.csv
           if git diff --cached --quiet; then
             echo "No artifact changes"
           else
