@@ -513,10 +513,10 @@ st.markdown(
 )
 
 metric_values = [
-    ("Recall", f'{metrics["recall"]:.1%}', "Sensitivity on test data"),
+    ("Recall", f'{metrics["recall"]:.1%}', "Sensitivity on held-out test data"),
+    ("False negatives", f'{metrics["confusion_matrix"][1][0]:,}', "Actual positive rows missed"),
     ("Precision", f'{metrics["precision"]:.1%}', "Positive prediction quality"),
-    ("ROC-AUC", f'{metrics["roc_auc"]:.3f}', "Ranking discrimination"),
-    ("PR-AUC", f'{metrics["pr_auc"]:.3f}', "Precision-recall performance"),
+    ("Specificity", f'{metrics["specificity"]:.1%}', "Actual negative rows correctly rejected"),
 ]
 
 metric_columns = st.columns(4)
