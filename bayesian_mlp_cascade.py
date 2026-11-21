@@ -144,6 +144,50 @@ def stage2_oof_predictions(features, target, epochs, seed):
     return oof_mean, oof_std, fold_rows
 
 
+
+def paired_bootstrap_differences(y_true, baseline_pred, cascade_pred, n_bootstrap=2000, seed=RANDOM_SEED):
+    """Paired row bootstrap for cascade-minus-baseline metric differences."""
+    y = np.asarray(y_true, dtype=int)
+    base = np.asarray(baseline_pred, dtype=int)
+    casc = np.asarray(cascade_pred, dtype=int)
+    rng = np.random.default_rng(seed)
+    names = ("precision", "recall", "specificity", "f1")
+    draws = {name: [] for name in names}
+
+    def metrics(sample_idx, pred):
+        ys, ps = y[sample_idx], pred[sample_idx]
+        tp = int(np.sum((ys == 1) & (ps == 1)))
+        fp = int(np.sum((ys == 0) & (ps == 1)))
+        tn = int(np.sum((ys == 0) & (ps == 0)))
+        fn = int(np.sum((ys == 1) & (ps == 0)))
+        return {
+            "precision": tp / max(tp + fp, 1),
+            "recall": tp / max(tp + fn, 1),
+            "specificity": tn / max(tn + fp, 1),
+            "f1": 2 * tp / max(2 * tp + fp + fn, 1),
+        }
+
+    for _ in range(n_bootstrap):
+        idx = rng.integers(0, len(y), size=len(y))
+        bm, cm = metrics(idx, base), metrics(idx, casc)
+        for name in names:
+            draws[name].append(cm[name] - bm[name])
+    return {
+        name: {
+            "difference_cascade_minus_baseline": float(
+                metrics(np.arange(len(y)), casc)[name]
+                - metrics(np.arange(len(y)), base)[name]
+            ),
+            "paired_bootstrap_95_ci": [
+                float(np.quantile(values, 0.025)),
+                float(np.quantile(values, 0.975)),
+            ],
+            "bootstrap_replicates": int(n_bootstrap),
+        }
+        for name, values in draws.items()
+    }
+
+
 def run():
     artifact_dir = Path(ARTIFACT_DIR)
     baseline_path = artifact_dir / "metrics.json"
@@ -178,6 +222,7 @@ def run():
     total_dev_positives = int(np.sum(y_train == 1))
     experiments = []
     all_fold_rows = []
+    matched_audit_rows = []
     for floor_index, recall_floor in enumerate(RECALL_FLOORS):
         # Keep Stage 1 deliberately more sensitive than the final cascade
         # target. This recall buffer gives Stage 2 room to reject false
@@ -231,6 +276,42 @@ def run():
         cascade_metrics = evaluate_predictions(
             y_test, cascade_scores, bayes_choice["threshold"]
         )
+
+        # Recalibrate the single-stage baseline on development OOF scores to
+        # the exact cascade OOF recall achieved by this Stage-2 threshold.
+        # The untouched test partition is used only for final paired comparison.
+        matched_baseline_threshold, matched_baseline_oof_recall = select_recall_threshold(
+            y_train, stage1_oof, bayes_choice["cascade_recall_oof"]
+        )
+        baseline_test_metrics = evaluate_predictions(
+            y_test, stage1_test, matched_baseline_threshold
+        )
+        baseline_test_pred = (stage1_test >= matched_baseline_threshold).astype(int)
+        cascade_test_pred = (cascade_scores >= bayes_choice["threshold"]).astype(int)
+        paired_differences = paired_bootstrap_differences(
+            y_test, baseline_test_pred, cascade_test_pred,
+            n_bootstrap=2000, seed=RANDOM_SEED + floor_index,
+        )
+        matched_audit_rows.append({
+            "cascade_recall_target": float(recall_floor),
+            "cascade_oof_recall": float(bayes_choice["cascade_recall_oof"]),
+            "baseline_oof_recall": float(matched_baseline_oof_recall),
+            "baseline_threshold": float(matched_baseline_threshold),
+            "cascade_threshold": float(bayes_choice["threshold"]),
+            "baseline_test_recall": baseline_test_metrics["recall"],
+            "cascade_test_recall": cascade_metrics["recall"],
+            "baseline_test_precision": baseline_test_metrics["precision"],
+            "cascade_test_precision": cascade_metrics["precision"],
+            "baseline_test_specificity": baseline_test_metrics["specificity"],
+            "cascade_test_specificity": cascade_metrics["specificity"],
+            "baseline_test_f1": baseline_test_metrics["f1"],
+            "cascade_test_f1": cascade_metrics["f1"],
+            "baseline_test_false_positives": int(baseline_test_metrics["confusion_matrix"][0][1]),
+            "cascade_test_false_positives": int(cascade_metrics["confusion_matrix"][0][1]),
+            "baseline_test_false_negatives": int(baseline_test_metrics["confusion_matrix"][1][0]),
+            "cascade_test_false_negatives": int(cascade_metrics["confusion_matrix"][1][0]),
+            "paired_bootstrap_differences": paired_differences,
+        })
         stage1_metrics = evaluate_predictions(y_test, stage1_test, stage1_threshold)
         stage1_test_tp = int(np.sum(test_gate & (y_test == 1)))
         stage2_test_tp = int(np.sum(
@@ -266,6 +347,27 @@ def run():
             "test_stage1_positive_rows": int(len(test_indices)),
             "test_stage1_true_positives": stage1_test_tp,
         })
+
+    matched_report = {
+        "status": "research_only_not_promoted",
+        "comparison": "Single-stage MLP threshold selected from development OOF predictions to match each cascade's achieved OOF recall; paired bootstrap compares predictions on the same untouched test rows.",
+        "bootstrap_method": "2,000 paired row-resamples of the fixed untouched test set; intervals are conditional on the fitted models and frozen OOF-selected thresholds.",
+        "test_rows": int(len(y_test)),
+        "results": matched_audit_rows,
+        "interpretation_warning": "OOF recall is matched by design, but realized test recall can differ. Bootstrap intervals do not include model-training or threshold-selection uncertainty and do not establish clinical validity.",
+    }
+    (artifact_dir / "mlp_matched_recall_audit.json").write_text(json.dumps(matched_report, indent=2))
+    audit_csv_rows = []
+    for row in matched_audit_rows:
+        flat = {key: value for key, value in row.items() if key != "paired_bootstrap_differences"}
+        for metric, values in row["paired_bootstrap_differences"].items():
+            flat[f"{metric}_difference_cascade_minus_baseline"] = values["difference_cascade_minus_baseline"]
+            flat[f"{metric}_difference_ci95_lower"] = values["paired_bootstrap_95_ci"][0]
+            flat[f"{metric}_difference_ci95_upper"] = values["paired_bootstrap_95_ci"][1]
+        audit_csv_rows.append(flat)
+    pd.DataFrame(audit_csv_rows).to_csv(
+        artifact_dir / "mlp_matched_recall_audit.csv", index=False
+    )
 
     report = {
         "experiment": "Two-stage PyTorch MLP cascade with Bayesian precision decision",
