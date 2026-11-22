@@ -505,6 +505,242 @@ st.markdown(
 st.markdown(
     """
     <div class="section-head">
+        <div><h2>Experiment with a new observation</h2><p>Start here · enter values and run the live MLP</p></div>
+        <p>01 / NEW DATA</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.caption(
+    "Start by entering a new set of values below and select **Run analysis**. "
+    "The result and local explanation will appear immediately after submission. "
+    "This live experiment uses the deployed PyTorch MLP; the two-tier tree cascade "
+    "is shown later as a separate research comparison."
+)
+with st.form("cardio_observation_form"):
+    st.caption("Example starting point: age 55 · height 165 cm · weight 75 kg · blood pressure 120/80.")
+    first_column, second_column, third_column = st.columns(3)
+
+    with first_column:
+        st.markdown('<div class="input-section">01 &nbsp; Demographics</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Basic profile information</div>', unsafe_allow_html=True)
+        age = st.slider("Age · years", 30, 80, 55)
+        gender = st.selectbox("Gender", ["Female", "Male"])
+
+    with second_column:
+        st.markdown('<div class="input-section">02 &nbsp; Body profile</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Height and weight measurements</div>', unsafe_allow_html=True)
+        height = st.number_input("Height · cm", 120, 220, 165)
+        weight = st.number_input("Weight · kg", 35.0, 200.0, 75.0, 0.5)
+
+    with third_column:
+        st.markdown('<div class="input-section">03 &nbsp; Blood pressure</div>', unsafe_allow_html=True)
+        st.markdown('<div class="input-hint">Systolic and diastolic readings</div>', unsafe_allow_html=True)
+        systolic = st.number_input("Systolic · mmHg", 70, 250, 120)
+        diastolic = st.number_input("Diastolic · mmHg", 40, 180, 80)
+
+    st.markdown("---")
+    lifestyle_column, habits_column = st.columns(2)
+
+    with lifestyle_column:
+        st.markdown('<div class="input-section">04 &nbsp; Clinical indicators</div>', unsafe_allow_html=True)
+        cholesterol = st.selectbox(
+            "Cholesterol level",
+            ["Normal", "Above normal", "Well above normal"],
+        )
+        glucose = st.selectbox(
+            "Glucose level",
+            ["Normal", "Above normal", "Well above normal"],
+        )
+
+    with habits_column:
+        st.markdown('<div class="input-section">05 &nbsp; Lifestyle</div>', unsafe_allow_html=True)
+        smoking = st.selectbox("Smoking", ["No", "Yes"])
+        alcohol = st.selectbox("Alcohol intake", ["No", "Yes"])
+        active = st.selectbox("Physical activity", ["Yes", "No"])
+
+    st.markdown("")
+    submitted = st.form_submit_button(
+        "✦  Run cardiovascular data analysis",
+        type="primary",
+        use_container_width=True,
+    )
+
+
+if submitted:
+    if systolic <= diastolic:
+        st.error("Systolic pressure must be greater than diastolic pressure.")
+    else:
+        feature_row = make_feature_row(
+            age,
+            1 if gender == "Female" else 2,
+            height,
+            weight,
+            systolic,
+            diastolic,
+            ["Normal", "Above normal", "Well above normal"].index(cholesterol) + 1,
+            ["Normal", "Above normal", "Well above normal"].index(glucose) + 1,
+            int(smoking == "Yes"),
+            int(alcohol == "Yes"),
+            int(active == "Yes"),
+        )
+        transformed = transform_frame(feature_row, config)
+        tensor = torch.tensor(transformed, dtype=torch.float32)
+
+        with torch.no_grad():
+            score = float(torch.sigmoid(model(tensor)).item())
+
+        predicted_positive = score >= threshold
+
+        st.markdown(
+            """
+            <div class="section-head">
+                <div><h2>Analysis output</h2><p>02 / MODEL RESULT</p></div>
+                <p>Threshold locked from OOF validation</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        result_column, score_column = st.columns([1.2, 0.8])
+
+        with result_column:
+            result_class = "result-positive" if predicted_positive else "result-negative"
+            result_text = "Positive class" if predicted_positive else "Negative class"
+            result_detail = (
+                "The model output is above the selected classification threshold."
+                if predicted_positive
+                else "The model output is below the selected classification threshold."
+            )
+            result_icon = "↗" if predicted_positive else "✓"
+            st.markdown(
+                f"""
+                <div class="result-panel {result_class}">
+                    <div class="result-label">Dataset classification</div>
+                    <div class="result-heading">{result_icon} &nbsp; {result_text}</div>
+                    <div class="result-copy">{result_detail}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with score_column:
+            st.markdown(
+                f"""
+                <div class="result-panel">
+                    <div class="result-label">Uncalibrated model score</div>
+                    <div class="score-number">{score:.1%}</div>
+                    <div class="result-copy">Model output score · not a clinical probability</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.progress(min(max(score, 0.0), 1.0))
+            st.caption(f"Selected threshold: {threshold:.4f}")
+
+        st.info(
+            "This score is uncalibrated and is not a disease probability. "
+            "A negative class prediction cannot rule out disease or replace medical advice. False negatives are especially important in this research context; never use this output to delay professional evaluation."
+        )
+
+        st.markdown(
+            """
+            <div class="section-head">
+                <div><h2>What influenced this result?</h2>
+                <p>03 / LOCAL MODEL EXPLANATION</p></div>
+                <p>Integrated Gradients · this observation</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            with st.spinner("Calculating feature contributions..."):
+                background = load_explanation_background("cardio-background-v1")
+                contributions = explain_observation(model, background, transformed)
+                labels = feature_names(config)
+            diagnostics = explanation_diagnostics(
+                model, background, transformed, contributions
+            )
+
+            if len(contributions) != len(labels):
+                raise ValueError("Integrated Gradients attributions do not match the saved feature schema.")
+
+            ranked = sorted(
+                zip(labels, contributions),
+                key=lambda item: abs(float(item[1])),
+                reverse=True,
+            )[:8]
+            max_impact = max((abs(float(value)) for _, value in ranked), default=0.0)
+
+            contribution_frame = pd.DataFrame(
+                {"Contribution": [float(value) for _, value in ranked]},
+                index=[label for label, _ in ranked],
+            ).sort_values("Contribution")
+            st.markdown("#### Feature contribution chart")
+            st.caption("Positive values push the model score upward; negative values push it downward.")
+            st.bar_chart(contribution_frame, horizontal=True)
+
+            st.markdown(
+                """
+                <div class="explain-intro">
+                    <div class="explain-icon">✦</div>
+                    <div>
+                        <div class="explain-title">The strongest signals behind this model output</div>
+                        <div class="explain-subtitle">Features are ranked by their contribution magnitude.
+                        Coral pushes the model score upward; teal pushes it downward.</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            for rank, (label, value) in enumerate(ranked, start=1):
+                value = float(value)
+                direction = "Raises model output" if value > 0 else "Lowers model output"
+                color = "#f07868" if value > 0 else "#0c9b91"
+                width = 0.0 if max_impact == 0 else abs(value) / max_impact * 100.0
+                st.markdown(
+                    f"""
+                    <div class="impact-card">
+                        <div class="impact-top">
+                            <div class="impact-name"><span class="impact-rank">{rank:02d}</span>{label}</div>
+                            <div class="impact-direction" style="color:{color}">{direction}</div>
+                        </div>
+                        <div class="impact-track">
+                            <div class="impact-fill" style="width:{width:.1f}%;background:{color}"></div>
+                        </div>
+                        <div class="impact-value">Attribution&nbsp; <strong>{value:+.4f}</strong></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            st.caption(
+                f"Integrated Gradients completeness check · absolute residual: {diagnostics['absolute_residual']:.6f}. "
+                "This is a numerical consistency diagnostic, not clinical validation."
+            )
+
+            st.markdown(
+                """
+                <div class="explain-note">
+                    <strong>How to read this:</strong> these are model attributions, not causes of
+                    cardiovascular disease. Correlated inputs and engineered features can share
+                    attribution. Integrated Gradients explains this model's output; it does not establish causation
+                    or clinical importance.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        except Exception as exc:
+            st.warning("The prediction is available, but its feature explanation could not be generated.")
+            st.caption(str(exc))
+
+
+st.markdown(
+    """
+    <div class="section-head">
         <div><h2>Model snapshot</h2><p>Held-out test-set performance</p></div>
         <p>High-recall operating point</p>
     </div>
@@ -925,234 +1161,6 @@ with boosting_tab:
     else:
         st.info("The CatBoost/XGBoost study will appear after the research workflow completes.")
     st.warning("All results are exploratory development OOF estimates. Pooled-OOF threshold selection is optimistic; independent confirmation is required. The deployed PyTorch MLP remains unchanged.")
-
-st.markdown(
-    """
-    <div class="section-head">
-        <div><h2>Explore an observation</h2><p>Provide dataset-style attributes below</p></div>
-        <p>01 / INPUT</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.caption(
-    "To test a new observation, edit the values in the form below and press "
-    "**Run cardiovascular data analysis**. Each submission runs the deployed "
-    "single-stage MLP; the experimental XGBoost/LightGBM cascade is currently "
-    "shown as an evaluation study and is not used for individual predictions."
-)
-with st.form("cardio_observation_form"):
-    st.caption("Example starting point: age 55 · height 165 cm · weight 75 kg · blood pressure 120/80.")
-    first_column, second_column, third_column = st.columns(3)
-
-    with first_column:
-        st.markdown('<div class="input-section">01 &nbsp; Demographics</div>', unsafe_allow_html=True)
-        st.markdown('<div class="input-hint">Basic profile information</div>', unsafe_allow_html=True)
-        age = st.slider("Age · years", 30, 80, 55)
-        gender = st.selectbox("Gender", ["Female", "Male"])
-
-    with second_column:
-        st.markdown('<div class="input-section">02 &nbsp; Body profile</div>', unsafe_allow_html=True)
-        st.markdown('<div class="input-hint">Height and weight measurements</div>', unsafe_allow_html=True)
-        height = st.number_input("Height · cm", 120, 220, 165)
-        weight = st.number_input("Weight · kg", 35.0, 200.0, 75.0, 0.5)
-
-    with third_column:
-        st.markdown('<div class="input-section">03 &nbsp; Blood pressure</div>', unsafe_allow_html=True)
-        st.markdown('<div class="input-hint">Systolic and diastolic readings</div>', unsafe_allow_html=True)
-        systolic = st.number_input("Systolic · mmHg", 70, 250, 120)
-        diastolic = st.number_input("Diastolic · mmHg", 40, 180, 80)
-
-    st.markdown("---")
-    lifestyle_column, habits_column = st.columns(2)
-
-    with lifestyle_column:
-        st.markdown('<div class="input-section">04 &nbsp; Clinical indicators</div>', unsafe_allow_html=True)
-        cholesterol = st.selectbox(
-            "Cholesterol level",
-            ["Normal", "Above normal", "Well above normal"],
-        )
-        glucose = st.selectbox(
-            "Glucose level",
-            ["Normal", "Above normal", "Well above normal"],
-        )
-
-    with habits_column:
-        st.markdown('<div class="input-section">05 &nbsp; Lifestyle</div>', unsafe_allow_html=True)
-        smoking = st.selectbox("Smoking", ["No", "Yes"])
-        alcohol = st.selectbox("Alcohol intake", ["No", "Yes"])
-        active = st.selectbox("Physical activity", ["Yes", "No"])
-
-    st.markdown("")
-    submitted = st.form_submit_button(
-        "✦  Run cardiovascular data analysis",
-        type="primary",
-        use_container_width=True,
-    )
-
-
-if submitted:
-    if systolic <= diastolic:
-        st.error("Systolic pressure must be greater than diastolic pressure.")
-    else:
-        feature_row = make_feature_row(
-            age,
-            1 if gender == "Female" else 2,
-            height,
-            weight,
-            systolic,
-            diastolic,
-            ["Normal", "Above normal", "Well above normal"].index(cholesterol) + 1,
-            ["Normal", "Above normal", "Well above normal"].index(glucose) + 1,
-            int(smoking == "Yes"),
-            int(alcohol == "Yes"),
-            int(active == "Yes"),
-        )
-        transformed = transform_frame(feature_row, config)
-        tensor = torch.tensor(transformed, dtype=torch.float32)
-
-        with torch.no_grad():
-            score = float(torch.sigmoid(model(tensor)).item())
-
-        predicted_positive = score >= threshold
-
-        st.markdown(
-            """
-            <div class="section-head">
-                <div><h2>Analysis output</h2><p>02 / MODEL RESULT</p></div>
-                <p>Threshold locked from OOF validation</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        result_column, score_column = st.columns([1.2, 0.8])
-
-        with result_column:
-            result_class = "result-positive" if predicted_positive else "result-negative"
-            result_text = "Positive class" if predicted_positive else "Negative class"
-            result_detail = (
-                "The model output is above the selected classification threshold."
-                if predicted_positive
-                else "The model output is below the selected classification threshold."
-            )
-            result_icon = "↗" if predicted_positive else "✓"
-            st.markdown(
-                f"""
-                <div class="result-panel {result_class}">
-                    <div class="result-label">Dataset classification</div>
-                    <div class="result-heading">{result_icon} &nbsp; {result_text}</div>
-                    <div class="result-copy">{result_detail}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with score_column:
-            st.markdown(
-                f"""
-                <div class="result-panel">
-                    <div class="result-label">Uncalibrated model score</div>
-                    <div class="score-number">{score:.1%}</div>
-                    <div class="result-copy">Model output score · not a clinical probability</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.progress(min(max(score, 0.0), 1.0))
-            st.caption(f"Selected threshold: {threshold:.4f}")
-
-        st.info(
-            "This score is uncalibrated and is not a disease probability. "
-            "A negative class prediction cannot rule out disease or replace medical advice. False negatives are especially important in this research context; never use this output to delay professional evaluation."
-        )
-
-        st.markdown(
-            """
-            <div class="section-head">
-                <div><h2>What influenced this result?</h2>
-                <p>03 / LOCAL MODEL EXPLANATION</p></div>
-                <p>Integrated Gradients · this observation</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            with st.spinner("Calculating feature contributions..."):
-                background = load_explanation_background("cardio-background-v1")
-                contributions = explain_observation(model, background, transformed)
-                labels = feature_names(config)
-            diagnostics = explanation_diagnostics(
-                model, background, transformed, contributions
-            )
-
-            if len(contributions) != len(labels):
-                raise ValueError("Integrated Gradients attributions do not match the saved feature schema.")
-
-            ranked = sorted(
-                zip(labels, contributions),
-                key=lambda item: abs(float(item[1])),
-                reverse=True,
-            )[:8]
-            max_impact = max((abs(float(value)) for _, value in ranked), default=0.0)
-
-            st.markdown(
-                """
-                <div class="explain-intro">
-                    <div class="explain-icon">✦</div>
-                    <div>
-                        <div class="explain-title">The strongest signals behind this model output</div>
-                        <div class="explain-subtitle">Features are ranked by their contribution magnitude.
-                        Coral pushes the model score upward; teal pushes it downward.</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            for rank, (label, value) in enumerate(ranked, start=1):
-                value = float(value)
-                direction = "Raises model output" if value > 0 else "Lowers model output"
-                color = "#f07868" if value > 0 else "#0c9b91"
-                width = 0.0 if max_impact == 0 else abs(value) / max_impact * 100.0
-                st.markdown(
-                    f"""
-                    <div class="impact-card">
-                        <div class="impact-top">
-                            <div class="impact-name"><span class="impact-rank">{rank:02d}</span>{label}</div>
-                            <div class="impact-direction" style="color:{color}">{direction}</div>
-                        </div>
-                        <div class="impact-track">
-                            <div class="impact-fill" style="width:{width:.1f}%;background:{color}"></div>
-                        </div>
-                        <div class="impact-value">Attribution&nbsp; <strong>{value:+.4f}</strong></div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-            st.caption(
-                f"Integrated Gradients completeness check · absolute residual: {diagnostics['absolute_residual']:.6f}. "
-                "This is a numerical consistency diagnostic, not clinical validation."
-            )
-
-            st.markdown(
-                """
-                <div class="explain-note">
-                    <strong>How to read this:</strong> these are model attributions, not causes of
-                    cardiovascular disease. Correlated inputs and engineered features can share
-                    attribution. Integrated Gradients explains this model's output; it does not establish causation
-                    or clinical importance.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        except Exception as exc:
-            st.warning("The prediction is available, but its feature explanation could not be generated.")
-            st.caption(str(exc))
-
 
 st.caption(
     "Live prediction path: deployed PyTorch MLP only. The XGBoost/LightGBM second-stage "
